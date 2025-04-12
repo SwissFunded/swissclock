@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -9,6 +10,15 @@ app.use(cors());
 
 // Parse JSON bodies
 app.use(express.json());
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Welcome to SwissClock API',
+    documentation: '/api',
+    status: 'running'
+  });
+});
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -34,6 +44,15 @@ app.get('/api', (req, res) => {
       '/api/time-entries',
       '/api/time-entries/stats'
     ]
+  });
+});
+
+// Handle 404s
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not Found',
+    message: 'The requested resource was not found',
+    path: req.path
   });
 });
 
