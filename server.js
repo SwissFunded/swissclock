@@ -25,6 +25,18 @@ app.get('/api/time-entries/stats', (req, res) => {
   res.json({ message: 'Time entries stats endpoint' });
 });
 
+// Root API endpoint
+app.get('/api', (req, res) => {
+  res.json({ 
+    message: 'SwissClock API',
+    endpoints: [
+      '/api/health',
+      '/api/time-entries',
+      '/api/time-entries/stats'
+    ]
+  });
+});
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
