@@ -66,8 +66,6 @@ function App() {
   const updateSharedData = (employees, timeEntries) => {
     localStorage.setItem('sharedEmployees', JSON.stringify(employees));
     localStorage.setItem('sharedTimeEntries', JSON.stringify(timeEntries));
-    // Add a timestamp to force storage event
-    localStorage.setItem('lastUpdate', Date.now().toString());
   };
 
   // Listen for storage changes
@@ -104,7 +102,6 @@ function App() {
     const pollInterval = setInterval(() => {
       const storedEmployees = localStorage.getItem('sharedEmployees');
       const storedTimeEntries = localStorage.getItem('sharedTimeEntries');
-      const lastUpdate = localStorage.getItem('lastUpdate');
       
       if (storedEmployees) {
         const parsedEmployees = JSON.parse(storedEmployees);
