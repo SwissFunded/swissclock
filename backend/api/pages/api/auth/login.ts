@@ -24,41 +24,33 @@ const USERS = {
   }
 };
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  try {
-    console.log('Received request body:', req.body);
-    const { email, password } = req.body;
-    console.log('Login attempt:', { email, password });
-    console.log('Available users:', Object.keys(USERS));
-    console.log('Looking for user with email:', email?.toLowerCase());
-    
-    // Find user by email
-    const user = USERS[email?.toLowerCase()];
-    console.log('Found user:', user ? 'yes' : 'no');
-    
-    if (user) {
-      console.log('Password match:', user.password === password ? 'yes' : 'no');
-    }
+  const { email, password } = req.body;
+  console.log('Login attempt:', { email, password });
 
-    if (user && user.password === password) {
-      // Don't send password in response
-      const { password: _, ...userWithoutPassword } = user;
-      return res.status(200).json({
-        token: 'dummy-token',
-        user: userWithoutPassword,
-      });
-    }
-
-    return res.status(401).json({ message: 'Invalid credentials' });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Internal server error' });
+  // Super simple credential check
+  if (
+    (email === 'miro' && password === 'miro123') ||
+    (email === 'shein' && password === 'shein123') ||
+    (email === 'aymene' && password === 'aymene123')
+  ) {
+    // Get the user name based on the email
+    const name = email.charAt(0).toUpperCase() + email.slice(1);
+    
+    return res.status(200).json({
+      token: 'dummy-token',
+      user: {
+        id: email === 'miro' ? 1 : email === 'shein' ? 2 : 3,
+        name: name,
+        email: email,
+        isClockedIn: false
+      }
+    });
   }
+
+  return res.status(401).json({ message: 'Invalid email or password' });
 } 

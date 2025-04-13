@@ -50,18 +50,19 @@ function App() {
 
   const handleLogin = async (username, password) => {
     try {
-      console.log('Sending login request:', { email: username, password });
-      const response = await axios.post(`${API_URL}/auth/login`, {
+      console.log('Attempting login with:', { username, password });
+      const response = await axios.post('/api/auth/login', {
         email: username,
-        password
+        password: password
       });
       
+      console.log('Login successful:', response.data);
       setCurrentUser(response.data.user);
       setIsLoggedIn(true);
       setLoginError('');
     } catch (error) {
-      console.error('Login error:', error);
-      setLoginError(error.response?.data?.message || 'Invalid email or password');
+      console.error('Login failed:', error.response?.data || error);
+      setLoginError('Invalid email or password');
     }
   };
 
