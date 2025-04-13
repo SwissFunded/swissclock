@@ -35,13 +35,13 @@ const USERS = {
 // Use sessionStorage for current user and localStorage for shared data
 const loadFromStorage = () => {
   try {
-    const storedEmployees = localStorage.getItem('sharedEmployees');
-    const storedTimeEntries = localStorage.getItem('sharedTimeEntries');
     const storedUser = sessionStorage.getItem('currentUser');
+    const storedData = localStorage.getItem('sharedData');
+    const { employees = [], timeEntries = [] } = storedData ? JSON.parse(storedData) : {};
 
     return {
-      employees: storedEmployees ? JSON.parse(storedEmployees) : Object.values(USERS).map(({ password, ...user }) => user),
-      timeEntries: storedTimeEntries ? JSON.parse(storedTimeEntries) : [],
+      employees: employees.length ? employees : Object.values(USERS).map(({ password, ...user }) => user),
+      timeEntries,
       currentUser: storedUser ? JSON.parse(storedUser) : null
     };
   } catch (error) {
@@ -112,8 +112,10 @@ function App() {
   useEffect(() => {
     if (currentUser) {
       sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+      setIsLoggedIn(true);
     } else {
       sessionStorage.removeItem('currentUser');
+      setIsLoggedIn(false);
     }
   }, [currentUser]);
 
@@ -124,14 +126,23 @@ function App() {
     if (user && user.password === password) {
       const { password: _, ...userWithoutPassword } = user;
       // Get the latest status from shared storage
-      const storedEmployees = JSON.parse(localStorage.getItem('sharedEmployees') || '[]');
+      const storedData = localStorage.getItem('sharedData');
+      const { employees: storedEmployees = [] } = storedData ? JSON.parse(storedData) : {};
       const storedUser = storedEmployees.find(emp => emp.id === userWithoutPassword.id);
+      
       if (storedUser) {
         userWithoutPassword.isClockedIn = storedUser.isClockedIn;
       }
+      
       setCurrentUser(userWithoutPassword);
       setIsLoggedIn(true);
       setLoginError('');
+      
+      // Update shared data with the new user status
+      const updatedEmployees = employees.map(emp => 
+        emp.id === userWithoutPassword.id ? userWithoutPassword : emp
+      );
+      updateSharedData(updatedEmployees, timeEntries);
     } else {
       setLoginError('Invalid email or password');
     }
@@ -141,9 +152,9 @@ function App() {
     if (currentUser && employees.find(emp => emp.id === currentUser.id)?.isClockedIn) {
       handleClockOut(currentUser.id);
     }
-    sessionStorage.removeItem('currentUser');
     setCurrentUser(null);
     setIsLoggedIn(false);
+    sessionStorage.removeItem('currentUser');
   };
 
   const handleClockIn = useCallback((employeeId) => {
