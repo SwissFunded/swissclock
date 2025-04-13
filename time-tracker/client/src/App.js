@@ -11,7 +11,6 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 function App() {
   const [employees, setEmployees] = useState([]);
   const [timeEntries, setTimeEntries] = useState([]);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [loginError, setLoginError] = useState('');
