@@ -40,6 +40,16 @@ function getUserIdFromSession(session) {
 }
 
 export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   try {
     const session = req.headers.authorization;
     const userId = getUserIdFromSession(session);
@@ -55,7 +65,7 @@ export default async function handler(req, res) {
 
       if (error) {
         console.error('Supabase error:', error);
-        throw error;
+        return res.status(500).json({ error: 'Database error' });
       }
 
       // If no data exists, create initial records
@@ -70,14 +80,20 @@ export default async function handler(req, res) {
           .from('employee_status')
           .insert(initialData);
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          return res.status(500).json({ error: 'Database error' });
+        }
 
         // Fetch the newly inserted data
         const { data: newData, error: fetchError } = await supabase
           .from('employee_status')
           .select('*');
 
-        if (fetchError) throw fetchError;
+        if (fetchError) {
+          console.error('Fetch error:', fetchError);
+          return res.status(500).json({ error: 'Database error' });
+        }
         data = newData;
       }
 
@@ -98,37 +114,44 @@ export default async function handler(req, res) {
       const { action } = req.body;
       
       if (!action) {
-        return res.status(400).json({ error: 'Missing required fields' });
+        return res.status(400).json({ error: 'Missing action' });
       }
 
-      const isClockedIn = action === 'clockIn';
-      
-      // Update status in Supabase
-      const { error } = await supabase
+      const { data: currentStatus, error: fetchError } = await supabase
         .from('employee_status')
-        .upsert({
-          id: userId,
-          is_clocked_in: isClockedIn,
-          last_updated: new Date().toISOString()
-        });
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+      if (fetchError) {
+        console.error('Fetch error:', fetchError);
+        return res.status(500).json({ error: 'Database error' });
       }
 
-      // Fetch updated status for all employees
-      const { data, error: fetchError } = await supabase
+      const newStatus = action === 'clockIn';
+
+      const { error: updateError } = await supabase
+        .from('employee_status')
+        .update({ is_clocked_in: newStatus })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error('Update error:', updateError);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      // Fetch all statuses after update
+      const { data: allStatus, error: getAllError } = await supabase
         .from('employee_status')
         .select('*');
 
-      if (fetchError) {
-        console.error('Supabase fetch error:', fetchError);
-        throw fetchError;
+      if (getAllError) {
+        console.error('Get all error:', getAllError);
+        return res.status(500).json({ error: 'Database error' });
       }
 
       // Convert array to object with id as key
-      const status = data.reduce((acc, curr) => {
+      const status = allStatus.reduce((acc, curr) => {
         acc[curr.id] = {
           id: curr.id,
           name: curr.id === 1 ? 'Miro' : curr.id === 2 ? 'Shein' : 'Aymene',
@@ -142,7 +165,7 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
-    console.error('Error in status API:', error);
+    console.error('Server error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 } 
