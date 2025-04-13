@@ -7,6 +7,9 @@ import Profile from './components/Profile';
 import ThemeToggle from './components/ThemeToggle';
 import WorkCalendar from './components/WorkCalendar';
 
+// Create a broadcast channel for real-time updates
+const clockChannel = new BroadcastChannel('clock_status');
+
 // Hardcoded users
 const USERS = {
   miro: {
@@ -32,12 +35,12 @@ const USERS = {
   }
 };
 
-// Load data from localStorage
+// Use sessionStorage for current user and localStorage for shared data
 const loadFromStorage = () => {
   try {
-    const storedEmployees = localStorage.getItem('employees');
-    const storedTimeEntries = localStorage.getItem('timeEntries');
-    const storedUser = localStorage.getItem('currentUser');
+    const storedEmployees = localStorage.getItem('sharedEmployees');
+    const storedTimeEntries = localStorage.getItem('sharedTimeEntries');
+    const storedUser = sessionStorage.getItem('currentUser');
 
     return {
       employees: storedEmployees ? JSON.parse(storedEmployees) : Object.values(USERS).map(({ password, ...user }) => user),
@@ -63,41 +66,41 @@ function App() {
   const [loginError, setLoginError] = useState('');
   const [lastSync, setLastSync] = useState(Date.now());
 
-  // Save to localStorage whenever data changes
+  // Save shared data to localStorage
   useEffect(() => {
-    localStorage.setItem('employees', JSON.stringify(employees));
-    localStorage.setItem('timeEntries', JSON.stringify(timeEntries));
+    localStorage.setItem('sharedEmployees', JSON.stringify(employees));
+    localStorage.setItem('sharedTimeEntries', JSON.stringify(timeEntries));
+  }, [employees, timeEntries]);
+
+  // Save current user to sessionStorage
+  useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
     } else {
-      localStorage.removeItem('currentUser');
+      sessionStorage.removeItem('currentUser');
     }
-  }, [employees, timeEntries, currentUser]);
+  }, [currentUser]);
 
-  // Polling for updates
+  // Listen for broadcast updates
   useEffect(() => {
-    const pollInterval = setInterval(() => {
-      // Simulate checking for updates
-      const now = Date.now();
-      if (now - lastSync > 2000) { // Check every 2 seconds
-        setLastSync(now);
-        // In a real app, this would be an API call to get updates
-        const storedEmployees = localStorage.getItem('employees');
-        if (storedEmployees) {
-          const parsedEmployees = JSON.parse(storedEmployees);
-          setEmployees(prevEmployees => {
-            // Only update if there are actual changes
-            if (JSON.stringify(prevEmployees) !== JSON.stringify(parsedEmployees)) {
-              return parsedEmployees;
-            }
-            return prevEmployees;
-          });
-        }
+    const handleBroadcast = (event) => {
+      const { type, data } = event.data;
+      if (type === 'UPDATE_EMPLOYEES') {
+        setEmployees(data);
+      } else if (type === 'UPDATE_TIME_ENTRIES') {
+        setTimeEntries(data);
       }
-    }, 2000);
+    };
 
-    return () => clearInterval(pollInterval);
-  }, [lastSync]);
+    clockChannel.addEventListener('message', handleBroadcast);
+    return () => {
+      clockChannel.removeEventListener('message', handleBroadcast);
+    };
+  }, []);
+
+  const broadcastUpdates = (type, data) => {
+    clockChannel.postMessage({ type, data });
+  };
 
   // Add scroll animation observer
   useEffect(() => {
@@ -125,8 +128,8 @@ function App() {
 
     if (user && user.password === password) {
       const { password: _, ...userWithoutPassword } = user;
-      // Check if user is already clocked in from localStorage
-      const storedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
+      // Get the latest status from shared storage
+      const storedEmployees = JSON.parse(localStorage.getItem('sharedEmployees') || '[]');
       const storedUser = storedEmployees.find(emp => emp.id === userWithoutPassword.id);
       if (storedUser) {
         userWithoutPassword.isClockedIn = storedUser.isClockedIn;
@@ -143,7 +146,7 @@ function App() {
     if (currentUser && employees.find(emp => emp.id === currentUser.id)?.isClockedIn) {
       handleClockOut(currentUser.id);
     }
-    localStorage.removeItem('currentUser');
+    sessionStorage.removeItem('currentUser');
     setCurrentUser(null);
     setIsLoggedIn(false);
   };
@@ -168,10 +171,9 @@ function App() {
     });
     setEmployees(updatedEmployees);
 
-    // Update localStorage immediately
-    localStorage.setItem('timeEntries', JSON.stringify(updatedTimeEntries));
-    localStorage.setItem('employees', JSON.stringify(updatedEmployees));
-    setLastSync(Date.now());
+    // Broadcast updates to other users
+    broadcastUpdates('UPDATE_EMPLOYEES', updatedEmployees);
+    broadcastUpdates('UPDATE_TIME_ENTRIES', updatedTimeEntries);
   };
 
   const handleClockOut = (employeeId) => {
@@ -192,10 +194,9 @@ function App() {
     });
     setEmployees(updatedEmployees);
 
-    // Update localStorage immediately
-    localStorage.setItem('timeEntries', JSON.stringify(updatedTimeEntries));
-    localStorage.setItem('employees', JSON.stringify(updatedEmployees));
-    setLastSync(Date.now());
+    // Broadcast updates to other users
+    broadcastUpdates('UPDATE_EMPLOYEES', updatedEmployees);
+    broadcastUpdates('UPDATE_TIME_ENTRIES', updatedTimeEntries);
   };
 
   const calculateTotalHours = (employeeId) => {
