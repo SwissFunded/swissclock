@@ -54,6 +54,8 @@ const loadFromStorage = () => {
   }
 };
 
+const API_URL = 'https://swissclock.vercel.app';
+
 function App() {
   const { employees: initialEmployees, timeEntries: initialTimeEntries, currentUser: initialUser } = loadFromStorage();
   const [employees, setEmployees] = useState(initialEmployees);
@@ -123,7 +125,7 @@ function App() {
   // Fetch employee status
   const fetchEmployeeStatus = useCallback(async () => {
     try {
-      const response = await fetch('/api/status', {
+      const response = await fetch(`${API_URL}/api/status`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -173,7 +175,7 @@ function App() {
   // Handle clock in/out
   const handleClockIn = async () => {
     try {
-      const response = await fetch('/api/status', {
+      const response = await fetch(`${API_URL}/api/status`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -207,7 +209,7 @@ function App() {
 
   const handleClockOut = async () => {
     try {
-      const response = await fetch('/api/status', {
+      const response = await fetch(`${API_URL}/api/status`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
