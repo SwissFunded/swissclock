@@ -133,10 +133,42 @@ function App() {
       }
       const data = await response.json();
       setEmployeeStatus(data);
+      
+      // Update employees with the new status
+      const updatedEmployees = employees.map(emp => ({
+        ...emp,
+        isClockedIn: data[emp.id]?.isClockedIn || false
+      }));
+      setEmployees(updatedEmployees);
+      
+      // Update current user's status if they're logged in
+      if (currentUser && data[currentUser.id]) {
+        setCurrentUser(prev => ({ ...prev, isClockedIn: data[currentUser.id].isClockedIn }));
+      }
     } catch (error) {
       console.error('Error fetching status:', error);
     }
   };
+
+  // Poll for status updates
+  useEffect(() => {
+    let isMounted = true;
+    
+    // Initial fetch
+    fetchEmployeeStatus();
+    
+    // Set up polling
+    const interval = setInterval(() => {
+      if (isMounted) {
+        fetchEmployeeStatus();
+      }
+    }, 1000);
+    
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [currentUser]);
 
   // Handle clock in/out
   const handleClockIn = async () => {
