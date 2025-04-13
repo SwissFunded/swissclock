@@ -50,8 +50,9 @@ function App() {
 
   const handleLogin = async (username, password) => {
     try {
-      const response = await axios.post(`${API_URL}/login`, {
-        email: username.toLowerCase(),
+      console.log('Sending login request:', { email: username, password });
+      const response = await axios.post(`${API_URL}/auth/login`, {
+        email: username,
         password
       });
       
@@ -59,6 +60,7 @@ function App() {
       setIsLoggedIn(true);
       setLoginError('');
     } catch (error) {
+      console.error('Login error:', error);
       setLoginError(error.response?.data?.message || 'Invalid email or password');
     }
   };

@@ -33,11 +33,19 @@ export default async function handler(
   }
 
   try {
+    console.log('Received request body:', req.body);
     const { email, password } = req.body;
     console.log('Login attempt:', { email, password });
-
+    console.log('Available users:', Object.keys(USERS));
+    console.log('Looking for user with email:', email?.toLowerCase());
+    
     // Find user by email
-    const user = USERS[email.toLowerCase()];
+    const user = USERS[email?.toLowerCase()];
+    console.log('Found user:', user ? 'yes' : 'no');
+    
+    if (user) {
+      console.log('Password match:', user.password === password ? 'yes' : 'no');
+    }
 
     if (user && user.password === password) {
       // Don't send password in response
