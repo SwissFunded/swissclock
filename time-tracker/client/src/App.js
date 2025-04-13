@@ -119,6 +119,33 @@ function App() {
     }
   }, [currentUser]);
 
+  // Poll for status updates every second
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const response = await fetch('/api/status');
+        if (response.ok) {
+          const status = await response.json();
+          const updatedEmployees = employees.map(emp => ({
+            ...emp,
+            isClockedIn: status[emp.id]?.isClockedIn || false
+          }));
+          setEmployees(updatedEmployees);
+          
+          // Update current user's status if they're logged in
+          if (currentUser && status[currentUser.id]) {
+            setCurrentUser(prev => ({ ...prev, isClockedIn: status[currentUser.id].isClockedIn }));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching status:', error);
+      }
+    };
+
+    const interval = setInterval(fetchStatus, 1000);
+    return () => clearInterval(interval);
+  }, [employees, currentUser]);
+
   const handleLogin = (username, password) => {
     console.log('Login attempt:', { username, password });
     const user = USERS[username.toLowerCase()];
@@ -157,58 +184,77 @@ function App() {
     sessionStorage.removeItem('currentUser');
   };
 
-  const handleClockIn = useCallback((employeeId) => {
-    const now = new Date();
-    const newTimeEntry = {
-      id: Date.now(),
-      employeeId,
-      clockInTime: now,
-      clockOutTime: null
-    };
-    
-    const updatedTimeEntries = [...timeEntries, newTimeEntry];
-    const updatedEmployees = employees.map(emp => {
-      if (emp.id === employeeId) {
-        return { ...emp, isClockedIn: true };
-      }
-      return emp;
-    });
+  const handleClockIn = async (employeeId) => {
+    try {
+      const now = new Date();
+      const newTimeEntry = {
+        id: Date.now(),
+        employeeId,
+        clockInTime: now,
+        clockOutTime: null
+      };
+      
+      const updatedTimeEntries = [...timeEntries, newTimeEntry];
+      setTimeEntries(updatedTimeEntries);
+      
+      // Update status on the server
+      const response = await fetch('/api/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId, action: 'clockIn' })
+      });
 
-    setTimeEntries(updatedTimeEntries);
-    setEmployees(updatedEmployees);
-    updateSharedData(updatedEmployees, updatedTimeEntries);
-    
-    // Force immediate update for current user
-    if (currentUser && currentUser.id === employeeId) {
-      setCurrentUser(prev => ({ ...prev, isClockedIn: true }));
+      if (response.ok) {
+        const status = await response.json();
+        const updatedEmployees = employees.map(emp => ({
+          ...emp,
+          isClockedIn: status[emp.id]?.isClockedIn || false
+        }));
+        setEmployees(updatedEmployees);
+        
+        if (currentUser && currentUser.id === employeeId) {
+          setCurrentUser(prev => ({ ...prev, isClockedIn: true }));
+        }
+      }
+    } catch (error) {
+      console.error('Error clocking in:', error);
     }
-  }, [employees, timeEntries, currentUser, updateSharedData]);
+  };
 
-  const handleClockOut = useCallback((employeeId) => {
-    const now = new Date();
-    const updatedTimeEntries = timeEntries.map(entry => {
-      if (entry.employeeId === employeeId && !entry.clockOutTime) {
-        return { ...entry, clockOutTime: now };
-      }
-      return entry;
-    });
-    
-    const updatedEmployees = employees.map(emp => {
-      if (emp.id === employeeId) {
-        return { ...emp, isClockedIn: false };
-      }
-      return emp;
-    });
+  const handleClockOut = async (employeeId) => {
+    try {
+      const now = new Date();
+      const updatedTimeEntries = timeEntries.map(entry => {
+        if (entry.employeeId === employeeId && !entry.clockOutTime) {
+          return { ...entry, clockOutTime: now };
+        }
+        return entry;
+      });
+      setTimeEntries(updatedTimeEntries);
+      
+      // Update status on the server
+      const response = await fetch('/api/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId, action: 'clockOut' })
+      });
 
-    setTimeEntries(updatedTimeEntries);
-    setEmployees(updatedEmployees);
-    updateSharedData(updatedEmployees, updatedTimeEntries);
-    
-    // Force immediate update for current user
-    if (currentUser && currentUser.id === employeeId) {
-      setCurrentUser(prev => ({ ...prev, isClockedIn: false }));
+      if (response.ok) {
+        const status = await response.json();
+        const updatedEmployees = employees.map(emp => ({
+          ...emp,
+          isClockedIn: status[emp.id]?.isClockedIn || false
+        }));
+        setEmployees(updatedEmployees);
+        
+        if (currentUser && currentUser.id === employeeId) {
+          setCurrentUser(prev => ({ ...prev, isClockedIn: false }));
+        }
+      }
+    } catch (error) {
+      console.error('Error clocking out:', error);
     }
-  }, [employees, timeEntries, currentUser, updateSharedData]);
+  };
 
   const calculateTotalHours = (employeeId) => {
     const employeeEntries = timeEntries.filter(entry => entry.employeeId === employeeId);
