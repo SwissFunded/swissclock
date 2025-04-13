@@ -6,106 +6,93 @@ import Statistics from './components/Statistics';
 import Profile from './components/Profile';
 import ThemeToggle from './components/ThemeToggle';
 
+// Hardcoded users
+const USERS = {
+  miro: {
+    id: 1,
+    name: 'Miro',
+    email: 'miro',
+    password: 'miro123',
+    isClockedIn: false
+  },
+  shein: {
+    id: 2,
+    name: 'Shein',
+    email: 'shein',
+    password: 'shein123',
+    isClockedIn: false
+  },
+  aymene: {
+    id: 3,
+    name: 'Aymene',
+    email: 'aymene',
+    password: 'aymene123',
+    isClockedIn: false
+  }
+};
+
 function App() {
-  const [employees, setEmployees] = useState([]);
+  const [employees, setEmployees] = useState(Object.values(USERS).map(({ password, ...user }) => user));
   const [timeEntries, setTimeEntries] = useState([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [loginError, setLoginError] = useState('');
 
-  // Fetch employees and time entries
-  useEffect(() => {
-    if (isLoggedIn) {
-      fetchEmployees();
-      fetchTimeEntries();
-      // Set up polling for real-time updates
-      const pollInterval = setInterval(() => {
-        fetchEmployees();
-        fetchTimeEntries();
-      }, 30000); // Poll every 30 seconds
+  const handleLogin = (username, password) => {
+    console.log('Login attempt:', { username, password });
+    const user = USERS[username.toLowerCase()];
 
-      return () => clearInterval(pollInterval);
-    }
-  }, [isLoggedIn]);
-
-  const fetchEmployees = async () => {
-    try {
-      const response = await axios.get('/api/employees');
-      setEmployees(response.data);
-    } catch (error) {
-      console.error('Error fetching employees:', error);
-    }
-  };
-
-  const fetchTimeEntries = async () => {
-    try {
-      const response = await axios.get('/api/time-entries');
-      setTimeEntries(response.data);
-    } catch (error) {
-      console.error('Error fetching time entries:', error);
-    }
-  };
-
-  const handleLogin = async (username, password) => {
-    try {
-      console.log('Attempting login with:', { username, password });
-      const response = await axios.post('/api/auth/login', {
-        email: username,
-        password: password
-      });
-      
-      console.log('Login successful:', response.data);
-      setCurrentUser(response.data.user);
+    if (user && user.password === password) {
+      const { password: _, ...userWithoutPassword } = user;
+      setCurrentUser(userWithoutPassword);
       setIsLoggedIn(true);
       setLoginError('');
-    } catch (error) {
-      console.error('Login failed:', error.response?.data || error);
+    } else {
       setLoginError('Invalid email or password');
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     if (currentUser && employees.find(emp => emp.id === currentUser.id)?.isClockedIn) {
-      await handleClockOut(currentUser.id);
+      handleClockOut(currentUser.id);
     }
     setCurrentUser(null);
     setIsLoggedIn(false);
   };
 
-  const handleClockIn = async (employeeId) => {
-    try {
-      const response = await axios.post('/api/clock-in', { employeeId });
-      const newTimeEntry = response.data;
-      
-      setTimeEntries([...timeEntries, newTimeEntry]);
-      setEmployees(employees.map(emp => {
-        if (emp.id === employeeId) {
-          return { ...emp, isClockedIn: true };
-        }
-        return emp;
-      }));
-    } catch (error) {
-      console.error('Error clocking in:', error);
-    }
+  const handleClockIn = (employeeId) => {
+    const now = new Date();
+    const newTimeEntry = {
+      id: Date.now(),
+      employeeId,
+      clockInTime: now,
+      clockOutTime: null
+    };
+    
+    setTimeEntries([...timeEntries, newTimeEntry]);
+    setEmployees(employees.map(emp => {
+      if (emp.id === employeeId) {
+        return { ...emp, isClockedIn: true };
+      }
+      return emp;
+    }));
   };
 
-  const handleClockOut = async (employeeId) => {
-    try {
-      const response = await axios.post('/api/clock-out', { employeeId });
-      const updatedTimeEntry = response.data;
-      
-      setTimeEntries(timeEntries.map(entry => 
-        entry.id === updatedTimeEntry.id ? updatedTimeEntry : entry
-      ));
-      setEmployees(employees.map(emp => {
-        if (emp.id === employeeId) {
-          return { ...emp, isClockedIn: false };
-        }
-        return emp;
-      }));
-    } catch (error) {
-      console.error('Error clocking out:', error);
-    }
+  const handleClockOut = (employeeId) => {
+    const now = new Date();
+    setTimeEntries(timeEntries.map(entry => {
+      if (entry.employeeId === employeeId && !entry.clockOutTime) {
+        return { ...entry, clockOutTime: now };
+      }
+      return entry;
+    }));
+    
+    setEmployees(employees.map(emp => {
+      if (emp.id === employeeId) {
+        return { ...emp, isClockedIn: false };
+      }
+      return emp;
+    }));
   };
 
   const calculateTotalHours = (employeeId) => {
