@@ -340,7 +340,7 @@ function App() {
                 <div className="employee-info">
                   <span className="employee-name">{employee.name}</span>
                   <span className="employee-status">
-                    {employee.isClockedIn ? '🟢 Clocked In' : '⚪ Clocked Out'}
+                    {employeeStatus && employeeStatus[employee.id]?.isClockedIn ? '🟢 Clocked In' : '⚪ Clocked Out'}
                   </span>
                   <span className="total-hours">
                     Today: {calculateTodayHours(employee.id).toFixed(2)} hrs
@@ -350,7 +350,7 @@ function App() {
                   </span>
                 </div>
                 {employee.id === currentUser.id && (
-                  !employee.isClockedIn ? (
+                  !employeeStatus || !employeeStatus[employee.id]?.isClockedIn ? (
                     <button 
                       className="timer-button"
                       onClick={handleClockIn}
