@@ -66,44 +66,65 @@ function App() {
   const updateSharedData = (employees, timeEntries) => {
     localStorage.setItem('sharedEmployees', JSON.stringify(employees));
     localStorage.setItem('sharedTimeEntries', JSON.stringify(timeEntries));
-    // Trigger storage event for other windows
+    // Add a timestamp to force storage event
     localStorage.setItem('lastUpdate', Date.now().toString());
   };
 
   // Listen for storage changes
   useEffect(() => {
-    const handleStorageChange = () => {
-      const storedEmployees = localStorage.getItem('sharedEmployees');
-      const storedTimeEntries = localStorage.getItem('sharedTimeEntries');
-      
-      if (storedEmployees) {
-        setEmployees(JSON.parse(storedEmployees));
-      }
-      if (storedTimeEntries) {
-        setTimeEntries(JSON.parse(storedTimeEntries));
+    const handleStorageChange = (e) => {
+      if (e.key === 'sharedEmployees' || e.key === 'sharedTimeEntries' || e.key === 'lastUpdate') {
+        const storedEmployees = localStorage.getItem('sharedEmployees');
+        const storedTimeEntries = localStorage.getItem('sharedTimeEntries');
+        
+        if (storedEmployees) {
+          const parsedEmployees = JSON.parse(storedEmployees);
+          setEmployees(parsedEmployees);
+          
+          // Update current user's status if they're logged in
+          if (currentUser) {
+            const updatedUser = parsedEmployees.find(emp => emp.id === currentUser.id);
+            if (updatedUser) {
+              setCurrentUser(prev => ({ ...prev, isClockedIn: updatedUser.isClockedIn }));
+            }
+          }
+        }
+        if (storedTimeEntries) {
+          setTimeEntries(JSON.parse(storedTimeEntries));
+        }
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [currentUser]);
 
-  // Poll for updates every second
+  // Poll for updates every 500ms
   useEffect(() => {
     const pollInterval = setInterval(() => {
       const storedEmployees = localStorage.getItem('sharedEmployees');
       const storedTimeEntries = localStorage.getItem('sharedTimeEntries');
+      const lastUpdate = localStorage.getItem('lastUpdate');
       
       if (storedEmployees) {
-        setEmployees(JSON.parse(storedEmployees));
+        const parsedEmployees = JSON.parse(storedEmployees);
+        setEmployees(parsedEmployees);
+        
+        // Update current user's status if they're logged in
+        if (currentUser) {
+          const updatedUser = parsedEmployees.find(emp => emp.id === currentUser.id);
+          if (updatedUser) {
+            setCurrentUser(prev => ({ ...prev, isClockedIn: updatedUser.isClockedIn }));
+          }
+        }
       }
       if (storedTimeEntries) {
         setTimeEntries(JSON.parse(storedTimeEntries));
       }
-    }, 1000);
+    }, 500);
 
     return () => clearInterval(pollInterval);
-  }, []);
+  }, [currentUser]);
 
   // Save current user to sessionStorage
   useEffect(() => {
@@ -163,6 +184,11 @@ function App() {
     setTimeEntries(updatedTimeEntries);
     setEmployees(updatedEmployees);
     updateSharedData(updatedEmployees, updatedTimeEntries);
+    
+    // Force immediate update for current user
+    if (currentUser && currentUser.id === employeeId) {
+      setCurrentUser(prev => ({ ...prev, isClockedIn: true }));
+    }
   };
 
   const handleClockOut = (employeeId) => {
@@ -184,6 +210,11 @@ function App() {
     setTimeEntries(updatedTimeEntries);
     setEmployees(updatedEmployees);
     updateSharedData(updatedEmployees, updatedTimeEntries);
+    
+    // Force immediate update for current user
+    if (currentUser && currentUser.id === employeeId) {
+      setCurrentUser(prev => ({ ...prev, isClockedIn: false }));
+    }
   };
 
   const calculateTotalHours = (employeeId) => {
