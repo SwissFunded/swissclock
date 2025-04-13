@@ -6,6 +6,12 @@
       "use": "@vercel/next"
     }
   ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    }
+  ],
   "env": {
     "DATABASE_URL": "@database_url",
     "JWT_SECRET": "@jwt_secret"

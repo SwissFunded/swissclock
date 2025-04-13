@@ -40,118 +40,110 @@ function getUserIdFromSession(session) {
   }
 }
 
-export async function GET(request) {
+export default async function handler(req, res) {
   try {
-    const session = request.headers.get('Authorization');
+    const session = req.headers.authorization;
     const userId = getUserIdFromSession(session);
 
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { data, error } = await supabase
-      .from('employee_status')
-      .select('*');
-
-    if (error) {
-      console.error('Supabase error:', error);
-      throw error;
-    }
-
-    // If no data exists, create initial records
-    if (!data || data.length === 0) {
-      const initialData = [
-        { id: 1, is_clocked_in: false },
-        { id: 2, is_clocked_in: false },
-        { id: 3, is_clocked_in: false }
-      ];
-
-      const { error: insertError } = await supabase
-        .from('employee_status')
-        .insert(initialData);
-
-      if (insertError) throw insertError;
-
-      // Fetch the newly inserted data
-      const { data: newData, error: fetchError } = await supabase
+    if (req.method === 'GET') {
+      const { data, error } = await supabase
         .from('employee_status')
         .select('*');
 
-      if (fetchError) throw fetchError;
-      data = newData;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      // If no data exists, create initial records
+      if (!data || data.length === 0) {
+        const initialData = [
+          { id: 1, is_clocked_in: false },
+          { id: 2, is_clocked_in: false },
+          { id: 3, is_clocked_in: false }
+        ];
+
+        const { error: insertError } = await supabase
+          .from('employee_status')
+          .insert(initialData);
+
+        if (insertError) throw insertError;
+
+        // Fetch the newly inserted data
+        const { data: newData, error: fetchError } = await supabase
+          .from('employee_status')
+          .select('*');
+
+        if (fetchError) throw fetchError;
+        data = newData;
+      }
+
+      // Convert array to object with id as key
+      const status = data.reduce((acc, curr) => {
+        acc[curr.id] = {
+          id: curr.id,
+          name: curr.id === 1 ? 'Miro' : curr.id === 2 ? 'Shein' : 'Aymene',
+          isClockedIn: curr.is_clocked_in
+        };
+        return acc;
+      }, {});
+
+      return res.status(200).json(status);
     }
 
-    // Convert array to object with id as key
-    const status = data.reduce((acc, curr) => {
-      acc[curr.id] = {
-        id: curr.id,
-        name: curr.id === 1 ? 'Miro' : curr.id === 2 ? 'Shein' : 'Aymene',
-        isClockedIn: curr.is_clocked_in
-      };
-      return acc;
-    }, {});
+    if (req.method === 'POST') {
+      const { action } = req.body;
+      
+      if (!action) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
 
-    return NextResponse.json(status);
+      const isClockedIn = action === 'clockIn';
+      
+      // Update status in Supabase
+      const { error } = await supabase
+        .from('employee_status')
+        .upsert({
+          id: userId,
+          is_clocked_in: isClockedIn,
+          last_updated: new Date().toISOString()
+        });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      // Fetch updated status for all employees
+      const { data, error: fetchError } = await supabase
+        .from('employee_status')
+        .select('*');
+
+      if (fetchError) {
+        console.error('Supabase fetch error:', fetchError);
+        throw fetchError;
+      }
+
+      // Convert array to object with id as key
+      const status = data.reduce((acc, curr) => {
+        acc[curr.id] = {
+          id: curr.id,
+          name: curr.id === 1 ? 'Miro' : curr.id === 2 ? 'Shein' : 'Aymene',
+          isClockedIn: curr.is_clocked_in
+        };
+        return acc;
+      }, {});
+
+      return res.status(200).json(status);
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
-    console.error('Error fetching status:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-export async function POST(request) {
-  try {
-    const session = request.headers.get('Authorization');
-    const userId = getUserIdFromSession(session);
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { action } = await request.json();
-    
-    if (!action) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    const isClockedIn = action === 'clockIn';
-    
-    // Update status in Supabase
-    const { error } = await supabase
-      .from('employee_status')
-      .upsert({
-        id: userId,
-        is_clocked_in: isClockedIn,
-        last_updated: new Date().toISOString()
-      });
-
-    if (error) {
-      console.error('Supabase error:', error);
-      throw error;
-    }
-
-    // Fetch updated status for all employees
-    const { data, error: fetchError } = await supabase
-      .from('employee_status')
-      .select('*');
-
-    if (fetchError) {
-      console.error('Supabase fetch error:', fetchError);
-      throw fetchError;
-    }
-
-    // Convert array to object with id as key
-    const status = data.reduce((acc, curr) => {
-      acc[curr.id] = {
-        id: curr.id,
-        name: curr.id === 1 ? 'Miro' : curr.id === 2 ? 'Shein' : 'Aymene',
-        isClockedIn: curr.is_clocked_in
-      };
-      return acc;
-    }, {});
-
-    return NextResponse.json(status);
-  } catch (error) {
-    console.error('Error updating status:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error in status API:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 } 
