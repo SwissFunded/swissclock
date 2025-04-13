@@ -1,81 +1,188 @@
 .work-calendar {
   background: var(--background-color);
   padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin: 2rem 0;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  margin: 2rem auto;
+  max-width: 900px;
 }
 
 .work-calendar h2 {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
   color: var(--text-color);
+  font-size: 1.8rem;
+  font-weight: 600;
+  text-align: center;
 }
 
+/* Calendar Container */
 .calendar-container {
   width: 100% !important;
   max-width: 800px;
   margin: 0 auto;
   background: var(--background-color) !important;
   border: none !important;
+  padding: 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Navigation arrows and month/year display */
+.react-calendar__navigation {
+  margin-bottom: 1.5rem;
+}
+
+.react-calendar__navigation button {
+  min-width: 44px;
+  background: none;
+  font-size: 1.3rem;
+  padding: 8px;
   border-radius: 8px;
-}
-
-.calendar-container button {
   color: var(--text-color) !important;
+  transition: all 0.2s ease;
 }
 
-.calendar-container .react-calendar__tile--now {
+.react-calendar__navigation button:enabled:hover,
+.react-calendar__navigation button:enabled:focus {
+  background-color: var(--primary-color-light) !important;
+  color: var(--primary-color) !important;
+}
+
+.react-calendar__navigation__label {
+  font-weight: bold !important;
+  font-size: 1.2rem !important;
+}
+
+/* Calendar grid */
+.react-calendar__month-view__weekdays {
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 0.9em;
+  padding: 8px 0;
+  color: var(--text-color-light);
+}
+
+.react-calendar__month-view__days {
+  gap: 8px;
+  padding: 8px;
+}
+
+.react-calendar__tile {
+  padding: 1.2em 0.5em;
+  background: none;
+  text-align: center;
+  border-radius: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  position: relative;
+  border: 2px solid transparent;
+}
+
+.react-calendar__tile:enabled:hover {
   background: var(--primary-color-light) !important;
+  color: var(--primary-color) !important;
 }
 
-.calendar-container .react-calendar__tile--active {
+.react-calendar__tile--now {
+  background: var(--primary-color-light) !important;
+  color: var(--primary-color) !important;
+  font-weight: bold;
+}
+
+.react-calendar__tile--active {
   background: var(--primary-color) !important;
   color: white !important;
+  font-weight: bold;
 }
 
-.calendar-container .react-calendar__tile:enabled:hover {
+.react-calendar__tile--active:enabled:hover {
   background: var(--primary-color-hover) !important;
 }
 
+/* Hours display on calendar days */
 .hours-worked {
-  font-size: 0.8em;
+  font-size: 0.75em;
   color: var(--primary-color);
-  margin-top: 0.3em;
-  font-weight: bold;
+  margin-top: 0.4em;
+  font-weight: 600;
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--primary-color-light);
+  padding: 2px 6px;
+  border-radius: 12px;
+  white-space: nowrap;
 }
 
+/* Selected date info panel */
 .selected-date-info {
-  margin-top: 1.5rem;
-  padding: 1rem;
+  margin-top: 2rem;
+  padding: 1.5rem;
   background: var(--background-color-light);
-  border-radius: 8px;
+  border-radius: 12px;
   text-align: center;
+  border: 2px solid var(--primary-color-light);
 }
 
 .selected-date-info h3 {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.8rem;
   color: var(--text-color);
+  font-size: 1.3rem;
+  font-weight: 600;
 }
 
 .selected-date-info p {
-  font-size: 1.2em;
+  font-size: 1.8em;
   color: var(--primary-color);
   font-weight: bold;
+  margin: 0;
 }
 
-/* Dark mode support */
+/* Dark mode adjustments */
 [data-theme="dark"] .calendar-container {
   background: var(--background-color-dark) !important;
 }
 
-[data-theme="dark"] .calendar-container button {
-  color: var(--text-color-dark) !important;
+[data-theme="dark"] .react-calendar__navigation button:enabled:hover,
+[data-theme="dark"] .react-calendar__navigation button:enabled:focus {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .react-calendar__tile:enabled:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .hours-worked {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--primary-color-light);
 }
 
 [data-theme="dark"] .selected-date-info {
   background: var(--background-color-darker);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
-[data-theme="dark"] .hours-worked {
-  color: var(--primary-color-light);
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .work-calendar {
+    padding: 1rem;
+    margin: 1rem;
+  }
+
+  .react-calendar__tile {
+    padding: 0.8em 0.3em;
+  }
+
+  .hours-worked {
+    font-size: 0.7em;
+  }
+
+  .selected-date-info h3 {
+    font-size: 1.1rem;
+  }
+
+  .selected-date-info p {
+    font-size: 1.5em;
+  }
 } 
