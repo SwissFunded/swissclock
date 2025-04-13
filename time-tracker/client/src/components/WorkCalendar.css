@@ -69,8 +69,27 @@
   padding: 0.25rem;
 }
 
+.react-calendar__month-view__weekdays__weekday abbr {
+  text-decoration: none;
+  color: var(--text-color);
+}
+
 .react-calendar__month-view__days {
   gap: 2px;
+}
+
+/* Normalize all date colors */
+.react-calendar__tile,
+.react-calendar__month-view__days__day {
+  color: var(--text-color) !important;
+}
+
+.react-calendar__month-view__days__day--weekend {
+  color: var(--text-color) !important;
+}
+
+.react-calendar__month-view__days__day--neighboringMonth {
+  color: var(--text-color-light) !important;
 }
 
 .react-calendar__tile {
