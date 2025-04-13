@@ -130,27 +130,23 @@ function App() {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch status');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Response was not JSON');
+      }
+      
       const data = await response.json();
       setEmployeeStatus(data);
-      
-      // Update employees with the new status
-      const updatedEmployees = employees.map(emp => ({
-        ...emp,
-        isClockedIn: data[emp.id]?.isClockedIn || false
-      }));
-      setEmployees(updatedEmployees);
-      
-      // Update current user's status if they're logged in
-      if (currentUser && data[currentUser.id]) {
-        setCurrentUser(prev => ({ ...prev, isClockedIn: data[currentUser.id].isClockedIn }));
-      }
     } catch (error) {
       console.error('Error fetching status:', error);
+      // Don't throw the error, just log it
     }
-  }, [currentUser, employees, setEmployees, setCurrentUser]);
+  }, []);
 
   // Poll for status updates
   useEffect(() => {
