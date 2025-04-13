@@ -12,8 +12,6 @@ function App() {
   const [employees, setEmployees] = useState([]);
   const [timeEntries, setTimeEntries] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [clockInTime, setClockInTime] = useState(null);
-  const [currentTime, setCurrentTime] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [loginError, setLoginError] = useState('');
@@ -51,23 +49,6 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    let interval;
-    if (selectedEmployee && selectedEmployee.isClockedIn) {
-      interval = setInterval(() => {
-        setCurrentTime(prevTime => prevTime + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [selectedEmployee]);
-
-  const formatTime = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
   const handleLogin = async (username, password) => {
     try {
       const response = await axios.post(`${API_URL}/login`, {
@@ -99,10 +80,7 @@ function App() {
       setTimeEntries([...timeEntries, newTimeEntry]);
       setEmployees(employees.map(emp => {
         if (emp.id === employeeId) {
-          const updatedEmployee = { ...emp, isClockedIn: true };
-          setSelectedEmployee(updatedEmployee);
-          setClockInTime(new Date());
-          return updatedEmployee;
+          return { ...emp, isClockedIn: true };
         }
         return emp;
       }));
@@ -119,17 +97,9 @@ function App() {
       setTimeEntries(timeEntries.map(entry => 
         entry.id === updatedTimeEntry.id ? updatedTimeEntry : entry
       ));
-
       setEmployees(employees.map(emp => {
         if (emp.id === employeeId) {
-          setSelectedEmployee(null);
-          setClockInTime(null);
-          setCurrentTime(0);
-          return { 
-            ...emp, 
-            isClockedIn: false,
-            totalHours: calculateTotalHours(employeeId)
-          };
+          return { ...emp, isClockedIn: false };
         }
         return emp;
       }));
@@ -138,20 +108,15 @@ function App() {
     }
   };
 
-  // Add function to calculate total hours from time entries
   const calculateTotalHours = (employeeId) => {
-    return timeEntries
-      .filter(entry => entry.employeeId === employeeId)
-      .reduce((total, entry) => {
-        if (!entry.endTime && entry.startTime) {
-          // For current session
-          return total + (new Date() - new Date(entry.startTime)) / (1000 * 60 * 60);
-        } else if (entry.endTime && entry.startTime) {
-          // For completed sessions
-          return total + (new Date(entry.endTime) - new Date(entry.startTime)) / (1000 * 60 * 60);
-        }
-        return total;
-      }, 0);
+    const employeeEntries = timeEntries.filter(entry => entry.employeeId === employeeId);
+    return employeeEntries.reduce((total, entry) => {
+      if (entry.clockOutTime) {
+        const duration = new Date(entry.clockOutTime) - new Date(entry.clockInTime);
+        return total + duration / (1000 * 60 * 60);
+      }
+      return total;
+    }, 0);
   };
 
   const sortedEmployees = [...employees].map(emp => ({
