@@ -1,9 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 
 const app = express();
-const port = process.env.PORT || 5000;
 
 // Enable CORS for all routes
 app.use(cors());
@@ -15,6 +13,7 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Welcome to SwissClock API',
+    version: '1.0.0',
     documentation: '/api',
     status: 'running'
   });
@@ -56,10 +55,13 @@ app.use((req, res) => {
   });
 });
 
-// Start the server
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+// Start server if running locally
+if (process.env.NODE_ENV !== 'production') {
+  const port = process.env.PORT || 5000;
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
 
 // Export the Express API
 module.exports = app; 
