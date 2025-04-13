@@ -6,8 +6,6 @@ import Statistics from './components/Statistics';
 import Profile from './components/Profile';
 import ThemeToggle from './components/ThemeToggle';
 
-const API_URL = '/api';
-
 function App() {
   const [employees, setEmployees] = useState([]);
   const [timeEntries, setTimeEntries] = useState([]);
@@ -32,7 +30,7 @@ function App() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await axios.get(`${API_URL}/employees`);
+      const response = await axios.get('/api/employees');
       setEmployees(response.data);
     } catch (error) {
       console.error('Error fetching employees:', error);
@@ -41,7 +39,7 @@ function App() {
 
   const fetchTimeEntries = async () => {
     try {
-      const response = await axios.get(`${API_URL}/time-entries`);
+      const response = await axios.get('/api/time-entries');
       setTimeEntries(response.data);
     } catch (error) {
       console.error('Error fetching time entries:', error);
@@ -76,7 +74,7 @@ function App() {
 
   const handleClockIn = async (employeeId) => {
     try {
-      const response = await axios.post(`${API_URL}/clock-in`, { employeeId });
+      const response = await axios.post('/api/clock-in', { employeeId });
       const newTimeEntry = response.data;
       
       setTimeEntries([...timeEntries, newTimeEntry]);
@@ -93,7 +91,7 @@ function App() {
 
   const handleClockOut = async (employeeId) => {
     try {
-      const response = await axios.post(`${API_URL}/clock-out`, { employeeId });
+      const response = await axios.post('/api/clock-out', { employeeId });
       const updatedTimeEntry = response.data;
       
       setTimeEntries(timeEntries.map(entry => 
