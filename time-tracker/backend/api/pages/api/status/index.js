@@ -19,8 +19,23 @@ async function initializeTable() {
 // Call initializeTable when the API starts
 initializeTable();
 
-export async function GET() {
+// Helper function to get user ID from session
+async function getUserIdFromSession(session) {
+  if (!session) return null;
+  
+  const { data: { user } } = await supabase.auth.getUser(session);
+  return user?.id;
+}
+
+export async function GET(request) {
   try {
+    const session = request.headers.get('Authorization');
+    const userId = await getUserIdFromSession(session);
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { data, error } = await supabase
       .from('employee_status')
       .select('*');
@@ -72,10 +87,26 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { employeeId, action } = await request.json();
+    const session = request.headers.get('Authorization');
+    const userId = await getUserIdFromSession(session);
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { action } = await request.json();
     
-    if (!employeeId || !action) {
+    if (!action) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Get the employee ID based on the logged-in user
+    const employeeId = userId === 'miro@example.com' ? 1 : 
+                      userId === 'shein@example.com' ? 2 : 
+                      userId === 'aymene@example.com' ? 3 : null;
+
+    if (!employeeId) {
+      return NextResponse.json({ error: 'Invalid user' }, { status: 400 });
     }
 
     const isClockedIn = action === 'clockIn';
