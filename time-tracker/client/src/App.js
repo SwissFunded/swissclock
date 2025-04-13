@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import './App.css';
 import './animations.css';
 import Login from './Login';
@@ -63,7 +63,19 @@ function App() {
   const [loginError, setLoginError] = useState('');
 
   // Create a broadcast channel for real-time updates
-  const broadcastChannel = new BroadcastChannel('swissclock-updates');
+  const broadcastChannel = useMemo(() => new BroadcastChannel('swissclock-updates'), []);
+
+  // Save shared data and broadcast updates
+  const updateSharedData = useCallback((employees, timeEntries) => {
+    // Save to localStorage for persistence
+    localStorage.setItem('sharedData', JSON.stringify({ employees, timeEntries }));
+    
+    // Broadcast the update to other windows
+    broadcastChannel.postMessage({
+      type: 'update',
+      data: { employees, timeEntries }
+    });
+  }, [broadcastChannel]);
 
   // Listen for updates from other windows
   useEffect(() => {
@@ -86,19 +98,7 @@ function App() {
 
     broadcastChannel.addEventListener('message', handleMessage);
     return () => broadcastChannel.removeEventListener('message', handleMessage);
-  }, [currentUser]);
-
-  // Save shared data and broadcast updates
-  const updateSharedData = (employees, timeEntries) => {
-    // Save to localStorage for persistence
-    localStorage.setItem('sharedData', JSON.stringify({ employees, timeEntries }));
-    
-    // Broadcast the update to other windows
-    broadcastChannel.postMessage({
-      type: 'update',
-      data: { employees, timeEntries }
-    });
-  };
+  }, [broadcastChannel, currentUser]);
 
   // Initialize shared data on component mount
   useEffect(() => {
@@ -106,7 +106,7 @@ function App() {
     if (!storedData) {
       updateSharedData(employees, timeEntries);
     }
-  }, []);
+  }, [employees, timeEntries, updateSharedData]);
 
   // Save current user to sessionStorage
   useEffect(() => {
@@ -146,7 +146,7 @@ function App() {
     setIsLoggedIn(false);
   };
 
-  const handleClockIn = (employeeId) => {
+  const handleClockIn = useCallback((employeeId) => {
     const now = new Date();
     const newTimeEntry = {
       id: Date.now(),
@@ -171,9 +171,9 @@ function App() {
     if (currentUser && currentUser.id === employeeId) {
       setCurrentUser(prev => ({ ...prev, isClockedIn: true }));
     }
-  };
+  }, [employees, timeEntries, currentUser, updateSharedData]);
 
-  const handleClockOut = (employeeId) => {
+  const handleClockOut = useCallback((employeeId) => {
     const now = new Date();
     const updatedTimeEntries = timeEntries.map(entry => {
       if (entry.employeeId === employeeId && !entry.clockOutTime) {
@@ -197,7 +197,7 @@ function App() {
     if (currentUser && currentUser.id === employeeId) {
       setCurrentUser(prev => ({ ...prev, isClockedIn: false }));
     }
-  };
+  }, [employees, timeEntries, currentUser, updateSharedData]);
 
   const calculateTotalHours = (employeeId) => {
     const employeeEntries = timeEntries.filter(entry => entry.employeeId === employeeId);
