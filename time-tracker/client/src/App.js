@@ -64,8 +64,8 @@ function App() {
   };
 
   const handleLogout = async () => {
-    if (selectedEmployee && selectedEmployee.isClockedIn) {
-      await handleClockOut(selectedEmployee.id);
+    if (currentUser && employees.find(emp => emp.id === currentUser.id)?.isClockedIn) {
+      await handleClockOut(currentUser.id);
     }
     setCurrentUser(null);
     setIsLoggedIn(false);
