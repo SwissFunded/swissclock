@@ -62,72 +62,43 @@ function App() {
   const [currentUser, setCurrentUser] = useState(initialUser);
   const [loginError, setLoginError] = useState('');
 
-  // Save shared data to localStorage and trigger storage event
-  const updateSharedData = (employees, timeEntries) => {
-    const data = {
-      employees,
-      timeEntries,
-      timestamp: Date.now()
-    };
-    localStorage.setItem('sharedData', JSON.stringify(data));
-  };
+  // Create a broadcast channel for real-time updates
+  const broadcastChannel = new BroadcastChannel('swissclock-updates');
 
-  // Listen for storage changes
+  // Listen for updates from other windows
   useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === 'sharedData') {
-        const storedData = localStorage.getItem('sharedData');
-        if (storedData) {
-          const { employees: storedEmployees, timeEntries: storedTimeEntries } = JSON.parse(storedData);
-          
-          if (storedEmployees) {
-            setEmployees(storedEmployees);
-            
-            // Update current user's status if they're logged in
-            if (currentUser) {
-              const updatedUser = storedEmployees.find(emp => emp.id === currentUser.id);
-              if (updatedUser) {
-                setCurrentUser(prev => ({ ...prev, isClockedIn: updatedUser.isClockedIn }));
-              }
-            }
-          }
-          if (storedTimeEntries) {
-            setTimeEntries(storedTimeEntries);
-          }
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [currentUser]);
-
-  // Poll for updates every 500ms
-  useEffect(() => {
-    const pollInterval = setInterval(() => {
-      const storedData = localStorage.getItem('sharedData');
-      if (storedData) {
-        const { employees: storedEmployees, timeEntries: storedTimeEntries } = JSON.parse(storedData);
+    const handleMessage = (event) => {
+      const { type, data } = event.data;
+      if (type === 'update') {
+        const { employees: updatedEmployees, timeEntries: updatedTimeEntries } = data;
+        setEmployees(updatedEmployees);
+        setTimeEntries(updatedTimeEntries);
         
-        if (storedEmployees) {
-          setEmployees(storedEmployees);
-          
-          // Update current user's status if they're logged in
-          if (currentUser) {
-            const updatedUser = storedEmployees.find(emp => emp.id === currentUser.id);
-            if (updatedUser) {
-              setCurrentUser(prev => ({ ...prev, isClockedIn: updatedUser.isClockedIn }));
-            }
+        // Update current user's status if they're logged in
+        if (currentUser) {
+          const updatedUser = updatedEmployees.find(emp => emp.id === currentUser.id);
+          if (updatedUser) {
+            setCurrentUser(prev => ({ ...prev, isClockedIn: updatedUser.isClockedIn }));
           }
         }
-        if (storedTimeEntries) {
-          setTimeEntries(storedTimeEntries);
-        }
       }
-    }, 500);
+    };
 
-    return () => clearInterval(pollInterval);
+    broadcastChannel.addEventListener('message', handleMessage);
+    return () => broadcastChannel.removeEventListener('message', handleMessage);
   }, [currentUser]);
+
+  // Save shared data and broadcast updates
+  const updateSharedData = (employees, timeEntries) => {
+    // Save to localStorage for persistence
+    localStorage.setItem('sharedData', JSON.stringify({ employees, timeEntries }));
+    
+    // Broadcast the update to other windows
+    broadcastChannel.postMessage({
+      type: 'update',
+      data: { employees, timeEntries }
+    });
+  };
 
   // Initialize shared data on component mount
   useEffect(() => {
