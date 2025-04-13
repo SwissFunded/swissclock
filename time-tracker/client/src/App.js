@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
+import './animations.css';
 import Login from './Login';
 import Statistics from './components/Statistics';
 import Profile from './components/Profile';
@@ -37,6 +38,26 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [loginError, setLoginError] = useState('');
+
+  // Add scroll animation observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    document.querySelectorAll('.scroll-animate').forEach((element) => {
+      observer.observe(element);
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleLogin = (username, password) => {
     console.log('Login attempt:', { username, password });
@@ -112,19 +133,23 @@ function App() {
   })).sort((a, b) => b.totalHours - a.totalHours);
 
   if (!isLoggedIn) {
-    return <Login onLogin={handleLogin} error={loginError} />;
+    return (
+      <div className="login-container stagger-animation">
+        <Login onLogin={handleLogin} error={loginError} />
+      </div>
+    );
   }
 
   return (
-    <div className="App">
-      <div className="time-tracker-container">
+    <div className="App theme-transition">
+      <div className="time-tracker-container stagger-animation">
         <h1>SwissClock</h1>
         <button className="logout-button" onClick={handleLogout}>
           Logout ({currentUser.name})
         </button>
         <ThemeToggle />
         
-        <div className="employee-section">
+        <div className="employee-section scroll-animate">
           <h2>Employees</h2>
           <div className="employee-list">
             {employees.map(employee => (
@@ -160,22 +185,29 @@ function App() {
           </div>
         </div>
 
-        <Profile 
-          employee={currentUser} 
-          timeEntries={timeEntries.filter(entry => entry.employeeId === currentUser.id)}
-        />
-        <Statistics 
-          employeeData={{
-            ...currentUser,
-            totalHours: calculateTotalHours(currentUser.id)
-          }} 
-        />
+        <div className="scroll-animate">
+          <Profile 
+            employee={currentUser} 
+            timeEntries={timeEntries.filter(entry => entry.employeeId === currentUser.id)}
+          />
+        </div>
 
-        <WorkCalendar 
-          timeEntries={timeEntries.filter(entry => entry.employeeId === currentUser.id)} 
-        />
+        <div className="scroll-animate">
+          <Statistics 
+            employeeData={{
+              ...currentUser,
+              totalHours: calculateTotalHours(currentUser.id)
+            }} 
+          />
+        </div>
 
-        <div className="leaderboard">
+        <div className="scroll-animate">
+          <WorkCalendar 
+            timeEntries={timeEntries.filter(entry => entry.employeeId === currentUser.id)} 
+          />
+        </div>
+
+        <div className="leaderboard scroll-animate">
           <h2>Leaderboard</h2>
           <div className="leaderboard-list">
             {sortedEmployees.map((employee, index) => (
