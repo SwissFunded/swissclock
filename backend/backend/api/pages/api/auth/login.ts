@@ -15,20 +15,16 @@ export default async function handler(
 
   try {
     const { email, password } = req.body;
-    console.log('Login attempt:', { email });
 
     const user = await prisma.user.findUnique({
       where: { email },
     });
-
-    console.log('User found:', user ? 'yes' : 'no');
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password);
-    console.log('Password valid:', isValidPassword ? 'yes' : 'no');
 
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Invalid credentials' });

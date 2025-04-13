@@ -1,0 +1,105 @@
+.theme-toggle {
+  position: fixed;
+  top: 2rem;
+  right: 12rem;
+  padding: 0.6rem;
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Dark mode styles */
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] body {
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .App {
+  background: #1a1a1a;
+}
+
+[data-theme="dark"] .employee-card,
+[data-theme="dark"] .stats-card,
+[data-theme="dark"] .profile-section {
+  background: #2a2a2a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] .employee-name {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .employee-status,
+[data-theme="dark"] .total-hours,
+[data-theme="dark"] .stats-header,
+[data-theme="dark"] .notification {
+  color: #999999;
+}
+
+[data-theme="dark"] .timer-button {
+  background: #ffffff;
+  color: #000000;
+}
+
+[data-theme="dark"] .timer-button:hover {
+  background: #f5f5f5;
+}
+
+[data-theme="dark"] .action-button {
+  background: #333333;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .action-button:hover {
+  background: #444444;
+}
+
+[data-theme="dark"] .timeline {
+  background: #333333;
+}
+
+[data-theme="dark"] .work-block {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .notification-dot {
+  background: #ffffff;
+}
+
+[data-theme="dark"] .bar {
+  background: #ffffff;
+}
+
+[data-theme="dark"] .circular-progress path:first-child {
+  stroke: #333333;
+}
+
+[data-theme="dark"] .circular-progress path:last-child {
+  stroke: #ffffff;
+}
+
+[data-theme="dark"] .logout-button {
+  color: #ffffff;
+} 
