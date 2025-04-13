@@ -64,7 +64,6 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!initialUser);
   const [currentUser, setCurrentUser] = useState(initialUser);
   const [loginError, setLoginError] = useState('');
-  const [lastSync, setLastSync] = useState(Date.now());
 
   // Save shared data to localStorage
   useEffect(() => {
