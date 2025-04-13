@@ -121,15 +121,20 @@ function App() {
 
   // Poll for status updates every second
   useEffect(() => {
+    let isMounted = true;
+
     const fetchStatus = async () => {
       try {
         const response = await fetch('/api/status');
         if (response.ok) {
           const status = await response.json();
+          if (!isMounted) return;
+
           const updatedEmployees = employees.map(emp => ({
             ...emp,
             isClockedIn: status[emp.id]?.isClockedIn || false
           }));
+          
           setEmployees(updatedEmployees);
           
           // Update current user's status if they're logged in
@@ -142,8 +147,15 @@ function App() {
       }
     };
 
+    // Initial fetch
+    fetchStatus();
+
+    // Set up polling
     const interval = setInterval(fetchStatus, 1000);
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [employees, currentUser]);
 
   const handleLogin = (username, password) => {
@@ -204,20 +216,24 @@ function App() {
         body: JSON.stringify({ employeeId, action: 'clockIn' })
       });
 
-      if (response.ok) {
-        const status = await response.json();
-        const updatedEmployees = employees.map(emp => ({
-          ...emp,
-          isClockedIn: status[emp.id]?.isClockedIn || false
-        }));
-        setEmployees(updatedEmployees);
-        
-        if (currentUser && currentUser.id === employeeId) {
-          setCurrentUser(prev => ({ ...prev, isClockedIn: true }));
-        }
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+
+      const status = await response.json();
+      const updatedEmployees = employees.map(emp => ({
+        ...emp,
+        isClockedIn: status[emp.id]?.isClockedIn || false
+      }));
+      
+      setEmployees(updatedEmployees);
+      
+      if (currentUser && currentUser.id === employeeId) {
+        setCurrentUser(prev => ({ ...prev, isClockedIn: true }));
       }
     } catch (error) {
       console.error('Error clocking in:', error);
+      alert('Failed to clock in. Please try again.');
     }
   };
 
@@ -239,20 +255,24 @@ function App() {
         body: JSON.stringify({ employeeId, action: 'clockOut' })
       });
 
-      if (response.ok) {
-        const status = await response.json();
-        const updatedEmployees = employees.map(emp => ({
-          ...emp,
-          isClockedIn: status[emp.id]?.isClockedIn || false
-        }));
-        setEmployees(updatedEmployees);
-        
-        if (currentUser && currentUser.id === employeeId) {
-          setCurrentUser(prev => ({ ...prev, isClockedIn: false }));
-        }
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+
+      const status = await response.json();
+      const updatedEmployees = employees.map(emp => ({
+        ...emp,
+        isClockedIn: status[emp.id]?.isClockedIn || false
+      }));
+      
+      setEmployees(updatedEmployees);
+      
+      if (currentUser && currentUser.id === employeeId) {
+        setCurrentUser(prev => ({ ...prev, isClockedIn: false }));
       }
     } catch (error) {
       console.error('Error clocking out:', error);
+      alert('Failed to clock out. Please try again.');
     }
   };
 
