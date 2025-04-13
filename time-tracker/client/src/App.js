@@ -64,31 +64,36 @@ function App() {
 
   // Save shared data to localStorage and trigger storage event
   const updateSharedData = (employees, timeEntries) => {
-    localStorage.setItem('sharedEmployees', JSON.stringify(employees));
-    localStorage.setItem('sharedTimeEntries', JSON.stringify(timeEntries));
+    const data = {
+      employees,
+      timeEntries,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('sharedData', JSON.stringify(data));
   };
 
   // Listen for storage changes
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === 'sharedEmployees' || e.key === 'sharedTimeEntries' || e.key === 'lastUpdate') {
-        const storedEmployees = localStorage.getItem('sharedEmployees');
-        const storedTimeEntries = localStorage.getItem('sharedTimeEntries');
-        
-        if (storedEmployees) {
-          const parsedEmployees = JSON.parse(storedEmployees);
-          setEmployees(parsedEmployees);
+      if (e.key === 'sharedData') {
+        const storedData = localStorage.getItem('sharedData');
+        if (storedData) {
+          const { employees: storedEmployees, timeEntries: storedTimeEntries } = JSON.parse(storedData);
           
-          // Update current user's status if they're logged in
-          if (currentUser) {
-            const updatedUser = parsedEmployees.find(emp => emp.id === currentUser.id);
-            if (updatedUser) {
-              setCurrentUser(prev => ({ ...prev, isClockedIn: updatedUser.isClockedIn }));
+          if (storedEmployees) {
+            setEmployees(storedEmployees);
+            
+            // Update current user's status if they're logged in
+            if (currentUser) {
+              const updatedUser = storedEmployees.find(emp => emp.id === currentUser.id);
+              if (updatedUser) {
+                setCurrentUser(prev => ({ ...prev, isClockedIn: updatedUser.isClockedIn }));
+              }
             }
           }
-        }
-        if (storedTimeEntries) {
-          setTimeEntries(JSON.parse(storedTimeEntries));
+          if (storedTimeEntries) {
+            setTimeEntries(storedTimeEntries);
+          }
         }
       }
     };
@@ -100,28 +105,37 @@ function App() {
   // Poll for updates every 500ms
   useEffect(() => {
     const pollInterval = setInterval(() => {
-      const storedEmployees = localStorage.getItem('sharedEmployees');
-      const storedTimeEntries = localStorage.getItem('sharedTimeEntries');
-      
-      if (storedEmployees) {
-        const parsedEmployees = JSON.parse(storedEmployees);
-        setEmployees(parsedEmployees);
+      const storedData = localStorage.getItem('sharedData');
+      if (storedData) {
+        const { employees: storedEmployees, timeEntries: storedTimeEntries } = JSON.parse(storedData);
         
-        // Update current user's status if they're logged in
-        if (currentUser) {
-          const updatedUser = parsedEmployees.find(emp => emp.id === currentUser.id);
-          if (updatedUser) {
-            setCurrentUser(prev => ({ ...prev, isClockedIn: updatedUser.isClockedIn }));
+        if (storedEmployees) {
+          setEmployees(storedEmployees);
+          
+          // Update current user's status if they're logged in
+          if (currentUser) {
+            const updatedUser = storedEmployees.find(emp => emp.id === currentUser.id);
+            if (updatedUser) {
+              setCurrentUser(prev => ({ ...prev, isClockedIn: updatedUser.isClockedIn }));
+            }
           }
         }
-      }
-      if (storedTimeEntries) {
-        setTimeEntries(JSON.parse(storedTimeEntries));
+        if (storedTimeEntries) {
+          setTimeEntries(storedTimeEntries);
+        }
       }
     }, 500);
 
     return () => clearInterval(pollInterval);
   }, [currentUser]);
+
+  // Initialize shared data on component mount
+  useEffect(() => {
+    const storedData = localStorage.getItem('sharedData');
+    if (!storedData) {
+      updateSharedData(employees, timeEntries);
+    }
+  }, []);
 
   // Save current user to sessionStorage
   useEffect(() => {
