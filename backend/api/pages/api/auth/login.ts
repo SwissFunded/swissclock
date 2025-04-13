@@ -1,5 +1,29 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
+const USERS = {
+  miro: {
+    id: 1,
+    name: 'Miro',
+    email: 'miro',
+    password: 'miro123',
+    isClockedIn: false,
+  },
+  shein: {
+    id: 2,
+    name: 'Shein',
+    email: 'shein',
+    password: 'shein123',
+    isClockedIn: false,
+  },
+  aymene: {
+    id: 3,
+    name: 'Aymene',
+    email: 'aymene',
+    password: 'aymene123',
+    isClockedIn: false,
+  }
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -12,16 +36,15 @@ export default async function handler(
     const { email, password } = req.body;
     console.log('Login attempt:', { email, password });
 
-    // Simple check for the hardcoded credentials
-    if ((email === 'shein' || email === 'shein@example.com') && password === 'shein123') {
+    // Find user by email
+    const user = USERS[email.toLowerCase()];
+
+    if (user && user.password === password) {
+      // Don't send password in response
+      const { password: _, ...userWithoutPassword } = user;
       return res.status(200).json({
         token: 'dummy-token',
-        user: {
-          id: 1,
-          name: 'Shein',
-          email: 'shein',
-          isClockedIn: false,
-        },
+        user: userWithoutPassword,
       });
     }
 
