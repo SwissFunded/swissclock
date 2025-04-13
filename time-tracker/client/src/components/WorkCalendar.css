@@ -1,0 +1,81 @@
+.work-calendar {
+  background: var(--background-color);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin: 2rem 0;
+}
+
+.work-calendar h2 {
+  margin-bottom: 1.5rem;
+  color: var(--text-color);
+}
+
+.calendar-container {
+  width: 100% !important;
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--background-color) !important;
+  border: none !important;
+  border-radius: 8px;
+}
+
+.calendar-container button {
+  color: var(--text-color) !important;
+}
+
+.calendar-container .react-calendar__tile--now {
+  background: var(--primary-color-light) !important;
+}
+
+.calendar-container .react-calendar__tile--active {
+  background: var(--primary-color) !important;
+  color: white !important;
+}
+
+.calendar-container .react-calendar__tile:enabled:hover {
+  background: var(--primary-color-hover) !important;
+}
+
+.hours-worked {
+  font-size: 0.8em;
+  color: var(--primary-color);
+  margin-top: 0.3em;
+  font-weight: bold;
+}
+
+.selected-date-info {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--background-color-light);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.selected-date-info h3 {
+  margin-bottom: 0.5rem;
+  color: var(--text-color);
+}
+
+.selected-date-info p {
+  font-size: 1.2em;
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+/* Dark mode support */
+[data-theme="dark"] .calendar-container {
+  background: var(--background-color-dark) !important;
+}
+
+[data-theme="dark"] .calendar-container button {
+  color: var(--text-color-dark) !important;
+}
+
+[data-theme="dark"] .selected-date-info {
+  background: var(--background-color-darker);
+}
+
+[data-theme="dark"] .hours-worked {
+  color: var(--primary-color-light);
+} 

@@ -4,6 +4,7 @@ import Login from './Login';
 import Statistics from './components/Statistics';
 import Profile from './components/Profile';
 import ThemeToggle from './components/ThemeToggle';
+import WorkCalendar from './components/WorkCalendar';
 
 // Hardcoded users
 const USERS = {
@@ -168,6 +169,10 @@ function App() {
             ...currentUser,
             totalHours: calculateTotalHours(currentUser.id)
           }} 
+        />
+
+        <WorkCalendar 
+          timeEntries={timeEntries.filter(entry => entry.employeeId === currentUser.id)} 
         />
 
         <div className="leaderboard">
