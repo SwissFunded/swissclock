@@ -1,9 +1,4 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-
-const prisma = new PrismaClient();
 
 export default async function handler(
   req: NextApiRequest,
@@ -15,40 +10,22 @@ export default async function handler(
 
   try {
     const { email, password } = req.body;
-    console.log('Login attempt:', { email });
+    console.log('Login attempt:', { email, password });
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    console.log('User found:', user ? 'yes' : 'no');
-
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    // Simple check for the hardcoded credentials
+    if (email === 'shein' && password === 'shein123') {
+      return res.status(200).json({
+        token: 'dummy-token',
+        user: {
+          id: 1,
+          name: 'Shein',
+          email: 'shein',
+          isClockedIn: false,
+        },
+      });
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    console.log('Password valid:', isValidPassword ? 'yes' : 'no');
-
-    if (!isValidPassword) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
-    );
-
-    res.status(200).json({
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        isClockedIn: user.isClockedIn,
-      },
-    });
+    return res.status(401).json({ message: 'Invalid credentials' });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Internal server error' });
