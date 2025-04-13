@@ -121,7 +121,7 @@ function App() {
   }, [currentUser]);
 
   // Fetch employee status
-  const fetchEmployeeStatus = async () => {
+  const fetchEmployeeStatus = useCallback(async () => {
     try {
       const response = await fetch('/api/status', {
         headers: {
@@ -148,7 +148,7 @@ function App() {
     } catch (error) {
       console.error('Error fetching status:', error);
     }
-  };
+  }, [currentUser, employees]);
 
   // Poll for status updates
   useEffect(() => {
@@ -168,7 +168,7 @@ function App() {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [currentUser, fetchEmployeeStatus]);
+  }, [fetchEmployeeStatus]);
 
   // Handle clock in/out
   const handleClockIn = async () => {
