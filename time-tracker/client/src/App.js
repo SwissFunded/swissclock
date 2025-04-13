@@ -51,7 +51,7 @@ function App() {
   const handleLogin = async (username, password) => {
     try {
       const response = await axios.post(`${API_URL}/login`, {
-        username: username.toLowerCase(),
+        email: username.toLowerCase(),
         password
       });
       
@@ -59,7 +59,7 @@ function App() {
       setIsLoggedIn(true);
       setLoginError('');
     } catch (error) {
-      setLoginError(error.response?.data?.message || 'Invalid username or password');
+      setLoginError(error.response?.data?.message || 'Invalid email or password');
     }
   };
 
