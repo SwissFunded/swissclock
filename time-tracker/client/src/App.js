@@ -168,7 +168,7 @@ function App() {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [currentUser]);
+  }, [currentUser, fetchEmployeeStatus]);
 
   // Handle clock in/out
   const handleClockIn = async () => {
@@ -188,6 +188,18 @@ function App() {
       
       const data = await response.json();
       setEmployeeStatus(data);
+      
+      // Update employees with the new status
+      const updatedEmployees = employees.map(emp => ({
+        ...emp,
+        isClockedIn: data[emp.id]?.isClockedIn || false
+      }));
+      setEmployees(updatedEmployees);
+      
+      // Update current user's status
+      if (currentUser && data[currentUser.id]) {
+        setCurrentUser(prev => ({ ...prev, isClockedIn: data[currentUser.id].isClockedIn }));
+      }
     } catch (error) {
       console.error('Error clocking in:', error);
     }
@@ -210,6 +222,18 @@ function App() {
       
       const data = await response.json();
       setEmployeeStatus(data);
+      
+      // Update employees with the new status
+      const updatedEmployees = employees.map(emp => ({
+        ...emp,
+        isClockedIn: data[emp.id]?.isClockedIn || false
+      }));
+      setEmployees(updatedEmployees);
+      
+      // Update current user's status
+      if (currentUser && data[currentUser.id]) {
+        setCurrentUser(prev => ({ ...prev, isClockedIn: data[currentUser.id].isClockedIn }));
+      }
     } catch (error) {
       console.error('Error clocking out:', error);
     }
