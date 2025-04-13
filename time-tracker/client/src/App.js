@@ -32,12 +32,72 @@ const USERS = {
   }
 };
 
+// Load data from localStorage
+const loadFromStorage = () => {
+  try {
+    const storedEmployees = localStorage.getItem('employees');
+    const storedTimeEntries = localStorage.getItem('timeEntries');
+    const storedUser = localStorage.getItem('currentUser');
+
+    return {
+      employees: storedEmployees ? JSON.parse(storedEmployees) : Object.values(USERS).map(({ password, ...user }) => user),
+      timeEntries: storedTimeEntries ? JSON.parse(storedTimeEntries) : [],
+      currentUser: storedUser ? JSON.parse(storedUser) : null
+    };
+  } catch (error) {
+    console.error('Error loading from storage:', error);
+    return {
+      employees: Object.values(USERS).map(({ password, ...user }) => user),
+      timeEntries: [],
+      currentUser: null
+    };
+  }
+};
+
 function App() {
-  const [employees, setEmployees] = useState(Object.values(USERS).map(({ password, ...user }) => user));
-  const [timeEntries, setTimeEntries] = useState([]);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const { employees: initialEmployees, timeEntries: initialTimeEntries, currentUser: initialUser } = loadFromStorage();
+  const [employees, setEmployees] = useState(initialEmployees);
+  const [timeEntries, setTimeEntries] = useState(initialTimeEntries);
+  const [isLoggedIn, setIsLoggedIn] = useState(!!initialUser);
+  const [currentUser, setCurrentUser] = useState(initialUser);
   const [loginError, setLoginError] = useState('');
+  const [lastSync, setLastSync] = useState(Date.now());
+
+  // Save to localStorage whenever data changes
+  useEffect(() => {
+    localStorage.setItem('employees', JSON.stringify(employees));
+    localStorage.setItem('timeEntries', JSON.stringify(timeEntries));
+    if (currentUser) {
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('currentUser');
+    }
+  }, [employees, timeEntries, currentUser]);
+
+  // Polling for updates
+  useEffect(() => {
+    const pollInterval = setInterval(() => {
+      // Simulate checking for updates
+      const now = Date.now();
+      if (now - lastSync > 2000) { // Check every 2 seconds
+        setLastSync(now);
+        // In a real app, this would be an API call to get updates
+        const storedEmployees = localStorage.getItem('employees');
+        if (storedEmployees) {
+          const parsedEmployees = JSON.parse(storedEmployees);
+          setEmployees(prevEmployees => {
+            // Only update if there are actual changes
+            if (JSON.stringify(prevEmployees) !== JSON.stringify(parsedEmployees)) {
+              return parsedEmployees;
+            }
+            return prevEmployees;
+          });
+        }
+      }
+    }, 2000);
+
+    return () => clearInterval(pollInterval);
+  }, [lastSync]);
 
   // Add scroll animation observer
   useEffect(() => {
@@ -65,6 +125,12 @@ function App() {
 
     if (user && user.password === password) {
       const { password: _, ...userWithoutPassword } = user;
+      // Check if user is already clocked in from localStorage
+      const storedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
+      const storedUser = storedEmployees.find(emp => emp.id === userWithoutPassword.id);
+      if (storedUser) {
+        userWithoutPassword.isClockedIn = storedUser.isClockedIn;
+      }
       setCurrentUser(userWithoutPassword);
       setIsLoggedIn(true);
       setLoginError('');
@@ -77,6 +143,7 @@ function App() {
     if (currentUser && employees.find(emp => emp.id === currentUser.id)?.isClockedIn) {
       handleClockOut(currentUser.id);
     }
+    localStorage.removeItem('currentUser');
     setCurrentUser(null);
     setIsLoggedIn(false);
   };
@@ -90,30 +157,45 @@ function App() {
       clockOutTime: null
     };
     
-    setTimeEntries([...timeEntries, newTimeEntry]);
-    setEmployees(employees.map(emp => {
+    const updatedTimeEntries = [...timeEntries, newTimeEntry];
+    setTimeEntries(updatedTimeEntries);
+    
+    const updatedEmployees = employees.map(emp => {
       if (emp.id === employeeId) {
         return { ...emp, isClockedIn: true };
       }
       return emp;
-    }));
+    });
+    setEmployees(updatedEmployees);
+
+    // Update localStorage immediately
+    localStorage.setItem('timeEntries', JSON.stringify(updatedTimeEntries));
+    localStorage.setItem('employees', JSON.stringify(updatedEmployees));
+    setLastSync(Date.now());
   };
 
   const handleClockOut = (employeeId) => {
     const now = new Date();
-    setTimeEntries(timeEntries.map(entry => {
+    const updatedTimeEntries = timeEntries.map(entry => {
       if (entry.employeeId === employeeId && !entry.clockOutTime) {
         return { ...entry, clockOutTime: now };
       }
       return entry;
-    }));
+    });
+    setTimeEntries(updatedTimeEntries);
     
-    setEmployees(employees.map(emp => {
+    const updatedEmployees = employees.map(emp => {
       if (emp.id === employeeId) {
         return { ...emp, isClockedIn: false };
       }
       return emp;
-    }));
+    });
+    setEmployees(updatedEmployees);
+
+    // Update localStorage immediately
+    localStorage.setItem('timeEntries', JSON.stringify(updatedTimeEntries));
+    localStorage.setItem('employees', JSON.stringify(updatedEmployees));
+    setLastSync(Date.now());
   };
 
   const calculateTotalHours = (employeeId) => {
