@@ -148,7 +148,7 @@ function App() {
     } catch (error) {
       console.error('Error fetching status:', error);
     }
-  }, [currentUser, employees]);
+  }, [currentUser, employees, setEmployees, setCurrentUser]);
 
   // Poll for status updates
   useEffect(() => {
