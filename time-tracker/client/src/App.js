@@ -7,9 +7,6 @@ import Profile from './components/Profile';
 import ThemeToggle from './components/ThemeToggle';
 import WorkCalendar from './components/WorkCalendar';
 
-// Create a broadcast channel for real-time updates
-const clockChannel = new BroadcastChannel('clock_status');
-
 // Hardcoded users
 const USERS = {
   miro: {
@@ -65,11 +62,48 @@ function App() {
   const [currentUser, setCurrentUser] = useState(initialUser);
   const [loginError, setLoginError] = useState('');
 
-  // Save shared data to localStorage
-  useEffect(() => {
+  // Save shared data to localStorage and trigger storage event
+  const updateSharedData = (employees, timeEntries) => {
     localStorage.setItem('sharedEmployees', JSON.stringify(employees));
     localStorage.setItem('sharedTimeEntries', JSON.stringify(timeEntries));
-  }, [employees, timeEntries]);
+    // Trigger storage event for other windows
+    localStorage.setItem('lastUpdate', Date.now().toString());
+  };
+
+  // Listen for storage changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedEmployees = localStorage.getItem('sharedEmployees');
+      const storedTimeEntries = localStorage.getItem('sharedTimeEntries');
+      
+      if (storedEmployees) {
+        setEmployees(JSON.parse(storedEmployees));
+      }
+      if (storedTimeEntries) {
+        setTimeEntries(JSON.parse(storedTimeEntries));
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Poll for updates every second
+  useEffect(() => {
+    const pollInterval = setInterval(() => {
+      const storedEmployees = localStorage.getItem('sharedEmployees');
+      const storedTimeEntries = localStorage.getItem('sharedTimeEntries');
+      
+      if (storedEmployees) {
+        setEmployees(JSON.parse(storedEmployees));
+      }
+      if (storedTimeEntries) {
+        setTimeEntries(JSON.parse(storedTimeEntries));
+      }
+    }, 1000);
+
+    return () => clearInterval(pollInterval);
+  }, []);
 
   // Save current user to sessionStorage
   useEffect(() => {
@@ -79,47 +113,6 @@ function App() {
       sessionStorage.removeItem('currentUser');
     }
   }, [currentUser]);
-
-  // Listen for broadcast updates
-  useEffect(() => {
-    const handleBroadcast = (event) => {
-      const { type, data } = event.data;
-      if (type === 'UPDATE_EMPLOYEES') {
-        setEmployees(data);
-      } else if (type === 'UPDATE_TIME_ENTRIES') {
-        setTimeEntries(data);
-      }
-    };
-
-    clockChannel.addEventListener('message', handleBroadcast);
-    return () => {
-      clockChannel.removeEventListener('message', handleBroadcast);
-    };
-  }, []);
-
-  const broadcastUpdates = (type, data) => {
-    clockChannel.postMessage({ type, data });
-  };
-
-  // Add scroll animation observer
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    document.querySelectorAll('.scroll-animate').forEach((element) => {
-      observer.observe(element);
-    });
-
-    return () => observer.disconnect();
-  }, []);
 
   const handleLogin = (username, password) => {
     console.log('Login attempt:', { username, password });
@@ -160,19 +153,16 @@ function App() {
     };
     
     const updatedTimeEntries = [...timeEntries, newTimeEntry];
-    setTimeEntries(updatedTimeEntries);
-    
     const updatedEmployees = employees.map(emp => {
       if (emp.id === employeeId) {
         return { ...emp, isClockedIn: true };
       }
       return emp;
     });
-    setEmployees(updatedEmployees);
 
-    // Broadcast updates to other users
-    broadcastUpdates('UPDATE_EMPLOYEES', updatedEmployees);
-    broadcastUpdates('UPDATE_TIME_ENTRIES', updatedTimeEntries);
+    setTimeEntries(updatedTimeEntries);
+    setEmployees(updatedEmployees);
+    updateSharedData(updatedEmployees, updatedTimeEntries);
   };
 
   const handleClockOut = (employeeId) => {
@@ -183,7 +173,6 @@ function App() {
       }
       return entry;
     });
-    setTimeEntries(updatedTimeEntries);
     
     const updatedEmployees = employees.map(emp => {
       if (emp.id === employeeId) {
@@ -191,11 +180,10 @@ function App() {
       }
       return emp;
     });
-    setEmployees(updatedEmployees);
 
-    // Broadcast updates to other users
-    broadcastUpdates('UPDATE_EMPLOYEES', updatedEmployees);
-    broadcastUpdates('UPDATE_TIME_ENTRIES', updatedTimeEntries);
+    setTimeEntries(updatedTimeEntries);
+    setEmployees(updatedEmployees);
+    updateSharedData(updatedEmployees, updatedTimeEntries);
   };
 
   const calculateTotalHours = (employeeId) => {
@@ -204,14 +192,36 @@ function App() {
       if (entry.clockOutTime) {
         const duration = new Date(entry.clockOutTime) - new Date(entry.clockInTime);
         return total + duration / (1000 * 60 * 60);
+      } else if (entry.clockInTime) {
+        // For active sessions, calculate time until now
+        const duration = new Date() - new Date(entry.clockInTime);
+        return total + duration / (1000 * 60 * 60);
       }
       return total;
     }, 0);
   };
 
+  const calculateTodayHours = (employeeId) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todayEntries = timeEntries.filter(entry => {
+      const entryDate = new Date(entry.clockInTime);
+      return entry.employeeId === employeeId && entryDate >= today;
+    });
+
+    return todayEntries.reduce((total, entry) => {
+      const clockOut = entry.clockOutTime ? new Date(entry.clockOutTime) : new Date();
+      const clockIn = new Date(entry.clockInTime);
+      const duration = clockOut - clockIn;
+      return total + duration / (1000 * 60 * 60);
+    }, 0);
+  };
+
   const sortedEmployees = [...employees].map(emp => ({
     ...emp,
-    totalHours: calculateTotalHours(emp.id)
+    totalHours: calculateTotalHours(emp.id),
+    todayHours: calculateTodayHours(emp.id)
   })).sort((a, b) => b.totalHours - a.totalHours);
 
   if (!isLoggedIn) {
@@ -242,7 +252,10 @@ function App() {
                     {employee.isClockedIn ? '🟢 Clocked In' : '⚪ Clocked Out'}
                   </span>
                   <span className="total-hours">
-                    Total Hours: {calculateTotalHours(employee.id).toFixed(2)}
+                    Today: {calculateTodayHours(employee.id).toFixed(2)} hrs
+                  </span>
+                  <span className="total-hours">
+                    Total: {calculateTotalHours(employee.id).toFixed(2)} hrs
                   </span>
                 </div>
                 {employee.id === currentUser.id && (
@@ -271,6 +284,7 @@ function App() {
           <Profile 
             employee={currentUser} 
             timeEntries={timeEntries.filter(entry => entry.employeeId === currentUser.id)}
+            todayHours={calculateTodayHours(currentUser.id)}
           />
         </div>
 
@@ -278,7 +292,8 @@ function App() {
           <Statistics 
             employeeData={{
               ...currentUser,
-              totalHours: calculateTotalHours(currentUser.id)
+              totalHours: calculateTotalHours(currentUser.id),
+              todayHours: calculateTodayHours(currentUser.id)
             }} 
           />
         </div>
@@ -296,7 +311,10 @@ function App() {
               <div key={employee.id} className="leaderboard-item">
                 <span className="rank">#{index + 1}</span>
                 <span className="name">{employee.name}</span>
-                <span className="hours">{employee.totalHours.toFixed(2)} hours</span>
+                <span className="hours">
+                  Today: {employee.todayHours.toFixed(2)} hrs | 
+                  Total: {employee.totalHours.toFixed(2)} hrs
+                </span>
               </div>
             ))}
           </div>
