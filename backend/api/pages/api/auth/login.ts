@@ -13,7 +13,7 @@ export default async function handler(
     console.log('Login attempt:', { email, password });
 
     // Simple check for the hardcoded credentials
-    if (email === 'shein' && password === 'shein123') {
+    if ((email === 'shein' || email === 'shein@example.com') && password === 'shein123') {
       return res.status(200).json({
         token: 'dummy-token',
         user: {

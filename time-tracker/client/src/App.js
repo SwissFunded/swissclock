@@ -6,7 +6,7 @@ import Statistics from './components/Statistics';
 import Profile from './components/Profile';
 import ThemeToggle from './components/ThemeToggle';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = '/api';
 
 function App() {
   const [employees, setEmployees] = useState([]);
