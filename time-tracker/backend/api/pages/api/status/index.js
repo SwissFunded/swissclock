@@ -20,17 +20,30 @@ async function initializeTable() {
 initializeTable();
 
 // Helper function to get user ID from session
-async function getUserIdFromSession(session) {
+function getUserIdFromSession(session) {
   if (!session) return null;
   
-  const { data: { user } } = await supabase.auth.getUser(session);
-  return user?.id;
+  // Extract the username from the token
+  const token = session.replace('Bearer ', '');
+  const username = token.split(':')[0];
+  
+  // Map username to employee ID
+  switch (username) {
+    case 'miro':
+      return 1;
+    case 'shein':
+      return 2;
+    case 'aymene':
+      return 3;
+    default:
+      return null;
+  }
 }
 
 export async function GET(request) {
   try {
     const session = request.headers.get('Authorization');
-    const userId = await getUserIdFromSession(session);
+    const userId = getUserIdFromSession(session);
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -88,7 +101,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const session = request.headers.get('Authorization');
-    const userId = await getUserIdFromSession(session);
+    const userId = getUserIdFromSession(session);
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -100,22 +113,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Get the employee ID based on the logged-in user
-    const employeeId = userId === 'miro@example.com' ? 1 : 
-                      userId === 'shein@example.com' ? 2 : 
-                      userId === 'aymene@example.com' ? 3 : null;
-
-    if (!employeeId) {
-      return NextResponse.json({ error: 'Invalid user' }, { status: 400 });
-    }
-
     const isClockedIn = action === 'clockIn';
     
     // Update status in Supabase
     const { error } = await supabase
       .from('employee_status')
       .upsert({
-        id: employeeId,
+        id: userId,
         is_clocked_in: isClockedIn,
         last_updated: new Date().toISOString()
       });
