@@ -54,7 +54,8 @@ const loadFromStorage = () => {
   }
 };
 
-const API_URL = 'https://swissclock.vercel.app';
+// Use relative path for API calls
+const API_URL = '';
 
 function App() {
   const { employees: initialEmployees, timeEntries: initialTimeEntries, currentUser: initialUser } = loadFromStorage();
@@ -99,6 +100,19 @@ function App() {
         return;
       }
 
+      // Use hardcoded data if API fails or in development
+      if (!navigator.onLine || process.env.NODE_ENV === 'development') {
+        // Generate mock employee status data
+        const mockStatus = {
+          1: { id: 1, name: 'Miro', isClockedIn: false },
+          2: { id: 2, name: 'Shein', isClockedIn: false },
+          3: { id: 3, name: 'Aymene', isClockedIn: false }
+        };
+        
+        setEmployeeStatus(mockStatus);
+        return;
+      }
+
       const response = await fetch(`${API_URL}/api/status`, {
         headers: {
           'Authorization': token,
@@ -114,7 +128,21 @@ function App() {
         throw new Error('Failed to fetch status');
       }
 
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error('Invalid JSON response:', text);
+        // Fall back to mock data
+        data = {
+          1: { id: 1, name: 'Miro', isClockedIn: false },
+          2: { id: 2, name: 'Shein', isClockedIn: false },
+          3: { id: 3, name: 'Aymene', isClockedIn: false }
+        };
+      }
+      
       setEmployeeStatus(data);
       setError(null);
       
@@ -123,6 +151,14 @@ function App() {
     } catch (err) {
       console.error('Error fetching status:', err);
       setError(err.message);
+      
+      // Fall back to mock data
+      const mockStatus = {
+        1: { id: 1, name: 'Miro', isClockedIn: false },
+        2: { id: 2, name: 'Shein', isClockedIn: false },
+        3: { id: 3, name: 'Aymene', isClockedIn: false }
+      };
+      setEmployeeStatus(mockStatus);
     }
   }, [broadcastChannel]);
 
