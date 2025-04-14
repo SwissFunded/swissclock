@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import './App.css';
 import './animations.css';
 import Login from './Login';
@@ -62,14 +62,12 @@ function App() {
   const [timeEntries, setTimeEntries] = useState(initialTimeEntries);
   const [isLoggedIn, setIsLoggedIn] = useState(!!initialUser);
   const [currentUser, setCurrentUser] = useState(initialUser);
-  const [loginError, setLoginError] = useState('');
   const [employeeStatus, setEmployeeStatus] = useState({});
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [username, setUsername] = useState('');
 
   // Create a broadcast channel for real-time updates
-  const broadcastChannel = new BroadcastChannel('employee_status');
+  const broadcastChannel = useMemo(() => new BroadcastChannel('employee_status'), []);
 
   // Save shared data and broadcast updates
   const updateSharedData = useCallback((employees, timeEntries) => {
@@ -106,25 +104,6 @@ function App() {
     return () => broadcastChannel.removeEventListener('message', handleMessage);
   }, [broadcastChannel, currentUser]);
 
-  // Initialize shared data on component mount
-  useEffect(() => {
-    const storedData = localStorage.getItem('sharedData');
-    if (!storedData) {
-      updateSharedData(employees, timeEntries);
-    }
-  }, [employees, timeEntries, updateSharedData]);
-
-  // Save current user to sessionStorage
-  useEffect(() => {
-    if (currentUser) {
-      sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
-      setIsLoggedIn(true);
-    } else {
-      sessionStorage.removeItem('currentUser');
-      setIsLoggedIn(false);
-    }
-  }, [currentUser]);
-
   const fetchEmployeeStatus = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
@@ -160,10 +139,9 @@ function App() {
       setError(err.message);
       setLoading(false);
     }
-  }, []);
+  }, [broadcastChannel]);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async (username) => {
     if (!username) return;
 
     // Simple token generation (in production, this should be handled by a proper auth system)
@@ -172,6 +150,29 @@ function App() {
     setIsLoggedIn(true);
     await fetchEmployeeStatus();
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setIsLoggedIn(true);
+      fetchEmployeeStatus();
+    }
+
+    // Set up polling
+    const intervalId = setInterval(fetchEmployeeStatus, 1000);
+
+    // Listen for updates from other windows
+    broadcastChannel.onmessage = (event) => {
+      if (event.data.type === 'status_update') {
+        setEmployeeStatus(event.data.data);
+      }
+    };
+
+    return () => {
+      clearInterval(intervalId);
+      broadcastChannel.close();
+    };
+  }, [fetchEmployeeStatus, broadcastChannel]);
 
   const handleClockAction = async (action) => {
     try {
@@ -210,29 +211,6 @@ function App() {
       setError(err.message);
     }
   };
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      setIsLoggedIn(true);
-      fetchEmployeeStatus();
-    }
-
-    // Set up polling
-    const intervalId = setInterval(fetchEmployeeStatus, 1000);
-
-    // Listen for updates from other windows
-    broadcastChannel.onmessage = (event) => {
-      if (event.data.type === 'status_update') {
-        setEmployeeStatus(event.data.data);
-      }
-    };
-
-    return () => {
-      clearInterval(intervalId);
-      broadcastChannel.close();
-    };
-  }, [fetchEmployeeStatus]);
 
   const handleLogout = () => {
     if (currentUser && employees.find(emp => emp.id === currentUser.id)?.isClockedIn) {
@@ -284,7 +262,7 @@ function App() {
   if (!isLoggedIn) {
     return (
       <div className="login-container stagger-animation">
-        <Login onLogin={handleLogin} error={loginError} />
+        <Login onLogin={handleLogin} error={error} />
       </div>
     );
   }
