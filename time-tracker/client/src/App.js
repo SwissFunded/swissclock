@@ -278,7 +278,7 @@ function App() {
                     Total: {calculateTotalHours(employee.id).toFixed(2)} hrs
                   </span>
                 </div>
-                {employee.id === currentUser.id && (
+                {currentUser && employee.id === currentUser.id && (
                   !employeeStatus || !employeeStatus[employee.id]?.isClockedIn ? (
                     <button 
                       className="timer-button"
