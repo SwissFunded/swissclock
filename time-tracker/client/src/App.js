@@ -257,7 +257,7 @@ function App() {
       <div className="time-tracker-container stagger-animation">
         <h1>SwissClock</h1>
         <button className="logout-button" onClick={handleLogout}>
-          Logout ({currentUser.name})
+          Logout {currentUser ? `(${currentUser.name})` : ''}
         </button>
         <ThemeToggle />
         
