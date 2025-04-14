@@ -301,27 +301,33 @@ function App() {
         </div>
 
         <div className="scroll-animate">
-          <Profile 
-            employee={currentUser} 
-            timeEntries={timeEntries.filter(entry => entry.employeeId === currentUser.id)}
-            todayHours={calculateTodayHours(currentUser.id)}
-          />
+          {currentUser && (
+            <Profile 
+              employee={currentUser} 
+              timeEntries={timeEntries.filter(entry => entry.employeeId === currentUser.id)}
+              todayHours={calculateTodayHours(currentUser.id)}
+            />
+          )}
         </div>
 
         <div className="scroll-animate">
-          <Statistics 
-            employeeData={{
-              ...currentUser,
-              totalHours: calculateTotalHours(currentUser.id),
-              todayHours: calculateTodayHours(currentUser.id)
-            }} 
-          />
+          {currentUser && (
+            <Statistics 
+              employeeData={{
+                ...currentUser,
+                totalHours: calculateTotalHours(currentUser.id),
+                todayHours: calculateTodayHours(currentUser.id)
+              }} 
+            />
+          )}
         </div>
 
         <div className="scroll-animate">
-          <WorkCalendar 
-            timeEntries={timeEntries.filter(entry => entry.employeeId === currentUser.id)} 
-          />
+          {currentUser && (
+            <WorkCalendar 
+              timeEntries={timeEntries.filter(entry => entry.employeeId === currentUser.id)} 
+            />
+          )}
         </div>
 
         <div className="leaderboard scroll-animate">
