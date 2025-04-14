@@ -63,10 +63,13 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!initialUser);
   const [currentUser, setCurrentUser] = useState(initialUser);
   const [loginError, setLoginError] = useState('');
-  const [employeeStatus, setEmployeeStatus] = useState(null);
+  const [employeeStatus, setEmployeeStatus] = useState({});
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [username, setUsername] = useState('');
 
   // Create a broadcast channel for real-time updates
-  const broadcastChannel = useMemo(() => new BroadcastChannel('swissclock-updates'), []);
+  const broadcastChannel = new BroadcastChannel('employee_status');
 
   // Save shared data and broadcast updates
   const updateSharedData = useCallback((employees, timeEntries) => {
@@ -122,153 +125,118 @@ function App() {
     }
   }, [currentUser]);
 
-  // Fetch employee status
   const fetchEmployeeStatus = useCallback(async () => {
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setIsLoggedIn(false);
+        return;
+      }
+
       const response = await fetch(`${API_URL}/api/status`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          'Authorization': token,
+        },
       });
-      
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.status === 401) {
+          setIsLoggedIn(false);
+          localStorage.removeItem('token');
+          throw new Error('Unauthorized');
+        }
+        throw new Error('Failed to fetch status');
       }
-      
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Response was not JSON');
-      }
-      
+
       const data = await response.json();
       setEmployeeStatus(data);
-    } catch (error) {
-      console.error('Error fetching status:', error);
-      // Don't throw the error, just log it
+      setError(null);
+      setLoading(false);
+      
+      // Broadcast the update to other windows
+      broadcastChannel.postMessage({ type: 'status_update', data });
+    } catch (err) {
+      console.error('Error fetching status:', err);
+      setError(err.message);
+      setLoading(false);
     }
   }, []);
 
-  // Poll for status updates
-  useEffect(() => {
-    let isMounted = true;
-    
-    // Initial fetch
-    fetchEmployeeStatus();
-    
-    // Set up polling
-    const interval = setInterval(() => {
-      if (isMounted) {
-        fetchEmployeeStatus();
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!username) return;
+
+    // Simple token generation (in production, this should be handled by a proper auth system)
+    const token = `${username}:${Date.now()}`;
+    localStorage.setItem('token', `Bearer ${token}`);
+    setIsLoggedIn(true);
+    await fetchEmployeeStatus();
+  };
+
+  const handleClockAction = async (action) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setIsLoggedIn(false);
+        return;
       }
-    }, 1000);
-    
+
+      const response = await fetch(`${API_URL}/api/status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+        body: JSON.stringify({ action }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setIsLoggedIn(false);
+          localStorage.removeItem('token');
+          throw new Error('Unauthorized');
+        }
+        throw new Error(`Failed to ${action}`);
+      }
+
+      const data = await response.json();
+      setEmployeeStatus(data);
+      setError(null);
+      
+      // Broadcast the update to other windows
+      broadcastChannel.postMessage({ type: 'status_update', data });
+    } catch (err) {
+      console.error(`Error during ${action}:`, err);
+      setError(err.message);
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setIsLoggedIn(true);
+      fetchEmployeeStatus();
+    }
+
+    // Set up polling
+    const intervalId = setInterval(fetchEmployeeStatus, 1000);
+
+    // Listen for updates from other windows
+    broadcastChannel.onmessage = (event) => {
+      if (event.data.type === 'status_update') {
+        setEmployeeStatus(event.data.data);
+      }
+    };
+
     return () => {
-      isMounted = false;
-      clearInterval(interval);
+      clearInterval(intervalId);
+      broadcastChannel.close();
     };
   }, [fetchEmployeeStatus]);
 
-  // Handle clock in/out
-  const handleClockIn = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/status`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ action: 'clockIn' })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to clock in');
-      }
-      
-      const data = await response.json();
-      setEmployeeStatus(data);
-      
-      // Update employees with the new status
-      const updatedEmployees = employees.map(emp => ({
-        ...emp,
-        isClockedIn: data[emp.id]?.isClockedIn || false
-      }));
-      setEmployees(updatedEmployees);
-      
-      // Update current user's status
-      if (currentUser && data[currentUser.id]) {
-        setCurrentUser(prev => ({ ...prev, isClockedIn: data[currentUser.id].isClockedIn }));
-      }
-    } catch (error) {
-      console.error('Error clocking in:', error);
-    }
-  };
-
-  const handleClockOut = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/status`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ action: 'clockOut' })
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to clock out');
-      }
-      
-      const data = await response.json();
-      setEmployeeStatus(data);
-      
-      // Update employees with the new status
-      const updatedEmployees = employees.map(emp => ({
-        ...emp,
-        isClockedIn: data[emp.id]?.isClockedIn || false
-      }));
-      setEmployees(updatedEmployees);
-      
-      // Update current user's status
-      if (currentUser && data[currentUser.id]) {
-        setCurrentUser(prev => ({ ...prev, isClockedIn: data[currentUser.id].isClockedIn }));
-      }
-    } catch (error) {
-      console.error('Error clocking out:', error);
-    }
-  };
-
-  const handleLogin = (username, password) => {
-    console.log('Login attempt:', { username, password });
-    const user = USERS[username.toLowerCase()];
-
-    if (user && user.password === password) {
-      const { password: _, ...userWithoutPassword } = user;
-      // Get the latest status from shared storage
-      const storedData = localStorage.getItem('sharedData');
-      const { employees: storedEmployees = [] } = storedData ? JSON.parse(storedData) : {};
-      const storedUser = storedEmployees.find(emp => emp.id === userWithoutPassword.id);
-      
-      if (storedUser) {
-        userWithoutPassword.isClockedIn = storedUser.isClockedIn;
-      }
-      
-      setCurrentUser(userWithoutPassword);
-      setIsLoggedIn(true);
-      setLoginError('');
-      
-      // Update shared data with the new user status
-      const updatedEmployees = employees.map(emp => 
-        emp.id === userWithoutPassword.id ? userWithoutPassword : emp
-      );
-      updateSharedData(updatedEmployees, timeEntries);
-    } else {
-      setLoginError('Invalid email or password');
-    }
-  };
-
   const handleLogout = () => {
     if (currentUser && employees.find(emp => emp.id === currentUser.id)?.isClockedIn) {
-      handleClockOut();
+      handleClockAction('clockOut');
     }
     setCurrentUser(null);
     setIsLoggedIn(false);
@@ -351,14 +319,14 @@ function App() {
                   !employeeStatus || !employeeStatus[employee.id]?.isClockedIn ? (
                     <button 
                       className="timer-button"
-                      onClick={handleClockIn}
+                      onClick={() => handleClockAction('clockIn')}
                     >
                       Clock In
                     </button>
                   ) : (
                     <button 
                       className="timer-button"
-                      onClick={handleClockOut}
+                      onClick={() => handleClockAction('clockOut')}
                     >
                       Clock Out
                     </button>
