@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import './App.css';
 import './animations.css';
 import Login from './Login';
@@ -68,6 +68,9 @@ function App() {
 
   // Create a broadcast channel for real-time updates
   const broadcastChannel = useMemo(() => new BroadcastChannel('employee_status'), []);
+  
+  // Add a ref to track API failure state
+  const apiFailingRef = useRef(false);
 
   // Listen for updates from other windows
   useEffect(() => {
@@ -97,6 +100,12 @@ function App() {
       const token = localStorage.getItem('token');
       if (!token) {
         setIsLoggedIn(false);
+        return;
+      }
+
+      // If the API has been failing, don't try as frequently
+      if (apiFailingRef.current) {
+        console.log('Skipping API call due to previous failures');
         return;
       }
 
@@ -133,8 +142,11 @@ function App() {
       
       try {
         data = JSON.parse(text);
+        // Reset API failing flag if we successfully parse JSON
+        apiFailingRef.current = false;
       } catch (e) {
-        console.error('Invalid JSON response:', text);
+        console.error('Invalid JSON response:', text.substring(0, 100) + '...');
+        apiFailingRef.current = true;
         // Fall back to mock data
         data = {
           1: { id: 1, name: 'Miro', isClockedIn: false },
@@ -151,6 +163,7 @@ function App() {
     } catch (err) {
       console.error('Error fetching status:', err);
       setError(err.message);
+      apiFailingRef.current = true;
       
       // Fall back to mock data
       const mockStatus = {
@@ -169,6 +182,15 @@ function App() {
     const token = `${username}:${Date.now()}`;
     localStorage.setItem('token', `Bearer ${token}`);
     setIsLoggedIn(true);
+    
+    // Set current user
+    const user = Object.values(USERS).find(u => u.email === username);
+    if (user) {
+      const { password, ...userData } = user;
+      setCurrentUser(userData);
+      sessionStorage.setItem('currentUser', JSON.stringify(userData));
+    }
+    
     await fetchEmployeeStatus();
   };
 
@@ -179,8 +201,8 @@ function App() {
       fetchEmployeeStatus();
     }
 
-    // Set up polling
-    const intervalId = setInterval(fetchEmployeeStatus, 1000);
+    // Set up polling with a longer interval
+    const intervalId = setInterval(fetchEmployeeStatus, 5000);
 
     // Listen for updates from other windows
     broadcastChannel.onmessage = (event) => {
