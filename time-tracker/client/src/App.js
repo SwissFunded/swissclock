@@ -64,22 +64,9 @@ function App() {
   const [currentUser, setCurrentUser] = useState(initialUser);
   const [employeeStatus, setEmployeeStatus] = useState({});
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   // Create a broadcast channel for real-time updates
   const broadcastChannel = useMemo(() => new BroadcastChannel('employee_status'), []);
-
-  // Save shared data and broadcast updates
-  const updateSharedData = useCallback((employees, timeEntries) => {
-    // Save to localStorage for persistence
-    localStorage.setItem('sharedData', JSON.stringify({ employees, timeEntries }));
-    
-    // Broadcast the update to other windows
-    broadcastChannel.postMessage({
-      type: 'update',
-      data: { employees, timeEntries }
-    });
-  }, [broadcastChannel]);
 
   // Listen for updates from other windows
   useEffect(() => {
@@ -130,14 +117,12 @@ function App() {
       const data = await response.json();
       setEmployeeStatus(data);
       setError(null);
-      setLoading(false);
       
       // Broadcast the update to other windows
       broadcastChannel.postMessage({ type: 'status_update', data });
     } catch (err) {
       console.error('Error fetching status:', err);
       setError(err.message);
-      setLoading(false);
     }
   }, [broadcastChannel]);
 
